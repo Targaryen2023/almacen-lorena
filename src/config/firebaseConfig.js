@@ -30,8 +30,7 @@ let auth = null;
 if (isFirebaseConfigured) {
   const app = initializeApp(firebaseConfig);
   try {
-    // auth = initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
-    auth = Platform.OS === 'web' ? getAuth(app) : initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+    auth = initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
   } catch (error) {
     if (error.code !== 'auth/already-initialized') throw error;
     auth = getAuth(app);
