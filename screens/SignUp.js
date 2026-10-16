@@ -9,6 +9,8 @@
 // TAREA 5: crea el usuario en Firebase (nombre y apellido en displayName),
 //          avisa si el correo ya existe, muestra los mensajes en pantalla
 //          (Alert no funciona en el navegador) y al terminar vuelve a Login.
+// ESTILOS: colores y tipografía Montserrat desde src/estilos.js (manual + Figma);
+//          franja celeste con logo, título y subtítulo, como en Login.
 
 import React, { useState } from 'react';
 import {
@@ -21,8 +23,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons'; // íconos de línea, como en el Figma
 import { auth } from '../src/config/firebaseConfig';
 import { createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
@@ -36,23 +39,8 @@ import {
   MENSAJES,
 } from '../src/validaciones';
 
-// ---------------------------------------------------------------------------
-// Colores: paleta del Manual de Identidad + verde del Figma.
-// Cuando Maxi suba src/estilos.js, se reemplazan por los de ese archivo.
-// ---------------------------------------------------------------------------
-const COLORES = {
-  celeste: '#ADE3FF',     // franja superior (manual)
-  violeta: '#8C63D6',     // íconos y enlaces (manual)
-  negro: '#100F13',       // texto principal (manual)
-  rojo: '#E1493D',        // error (manual)
-  gris: '#D9D9D9',        // bordes neutros (manual)
-  verde: '#5E9136',       // botón y "cumplido" (Figma, no está en el manual)
-  fondo: '#F3F9FF',       // fondo de la pantalla (Figma)
-  titulo: '#2B2452',      // título "Crear cuenta" (Figma)
-  textoSuave: '#6B6880',  // subtítulos, placeholders y ayudas
-  blanco: '#FFFFFF',
-};
-
+// Colores, tipografía y estilos comunes (manual de identidad + Figma)
+import { COLORES, FUENTES, MEDIDAS, estilosComunes } from '../src/estilos';
 
 // ---------------------------------------------------------------------------
 // Componente Campo: etiqueta + caja con ícono + mensaje/ayuda debajo.
@@ -129,6 +117,7 @@ function Campo({
 // Pantalla
 // ---------------------------------------------------------------------------
 export default function SignUp({ navigation }) {
+  const insets = useSafeAreaInsets(); // alto de la barra de estado / notch
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [correo, setCorreo] = useState('');
@@ -148,9 +137,9 @@ export default function SignUp({ navigation }) {
   const marcarTocado = (campo) => setTocados((prev) => ({ ...prev, [campo]: true }));
 
   // TAREA 5: estados del envío a Firebase
-  const [enviando, setEnviando] = useState(false);          // muestra "Creando cuenta…"
-  const [exito, setExito] = useState(false);                // muestra el cartel verde
-  const [errorGeneral, setErrorGeneral] = useState('');     // cartel rojo (sin conexión, etc.)
+  const [enviando, setEnviando] = useState(false); // muestra "Creando cuenta…"
+  const [exito, setExito] = useState(false); // muestra el cartel verde
+  const [errorGeneral, setErrorGeneral] = useState(''); // cartel rojo (sin conexión, etc.)
   const [correoRegistrado, setCorreoRegistrado] = useState(''); // correo que Firebase rechazó por repetido
 
   // Errores calculados en cada render a partir del valor actual.
@@ -175,12 +164,13 @@ export default function SignUp({ navigation }) {
 
   // La contraseña y la confirmación avisan EN VIVO (mientras se escribe),
   // por eso no esperan al "tocado" para ponerse en verde.
-  const estadoContrasena =
-    contrasena && !errores.contrasena ? 'ok' : estadoDe('contrasena');
+  const estadoContrasena = contrasena && !errores.contrasena ? 'ok' : estadoDe('contrasena');
 
   // Confirmación: en cuanto hay algo escrito, se compara con la contraseña.
   const estadoConfirmacion = confirmacion
-    ? errores.confirmacion ? 'error' : 'ok'
+    ? errores.confirmacion
+      ? 'error'
+      : 'ok'
     : estadoDe('confirmacion'); // vacía: solo marca error si ya saliste del campo
 
   // TAREA 4: el formulario es válido solo si NINGÚN campo tiene error.
@@ -239,159 +229,180 @@ export default function SignUp({ navigation }) {
   };
 
   return (
-    <View style={styles.pantalla}>
-      {/* Franja celeste con la flecha para volver */}
-      <SafeAreaView edges={['top']} style={styles.franja}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.volver}>
-          <Feather name="arrow-left" size={24} color={COLORES.titulo} />
-        </TouchableOpacity>
-      </SafeAreaView>
-
+    <View style={estilosComunes.pantalla}>
       {/* KeyboardAvoidingView + ScrollView: con 5 campos el teclado tapa los de abajo */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.contenido}
+          contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.titulo}>Crear cuenta</Text>
-          <Text style={styles.subtitulo}>Completá tus datos para registrarte</Text>
+          {/* Franja celeste: flecha para volver + logo + título (va dentro del scroll
+              para que en pantallas chicas no ocupe lugar fijo) */}
+          <View style={[estilosComunes.franja, styles.franja, { paddingTop: insets.top + 12 }]}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              hitSlop={12}
+              style={styles.volver}
+              accessibilityLabel="Volver"
+            >
+              <Feather name="arrow-left" size={24} color={COLORES.titulo} />
+            </TouchableOpacity>
 
-          <Campo
-            etiqueta="Nombre"
-            icono="user"
-            placeholder="Ej: María"
-            value={nombre}
-            onChangeText={setNombre}
-            onBlur={() => marcarTocado('nombre')} // valida al salir del campo
-            estado={estadoDe('nombre')}
-            mensajeError={errores.nombre}
-            autoCapitalize="words"
-          />
+            <View style={styles.logoCirculo}>
+              <Image
+                source={require('../assets/logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+                accessibilityLabel="Logo de Almacén Lorena"
+              />
+            </View>
+            <Text style={[estilosComunes.titulo, styles.centrado]}>Crear cuenta</Text>
+            <Text style={[estilosComunes.subtitulo, styles.centrado]}>
+              Completá tus datos para registrarte
+            </Text>
+          </View>
 
-          <Campo
-            etiqueta="Apellido"
-            icono="user"
-            placeholder="Ej: Gómez"
-            value={apellido}
-            onChangeText={setApellido}
-            onBlur={() => marcarTocado('apellido')}
-            estado={estadoDe('apellido')}
-            mensajeError={errores.apellido}
-            autoCapitalize="words"
-          />
+          <View style={styles.contenido}>
+            <Campo
+              etiqueta="Nombre"
+              icono="user"
+              placeholder="Ej: María"
+              value={nombre}
+              onChangeText={setNombre}
+              onBlur={() => marcarTocado('nombre')} // valida al salir del campo
+              estado={estadoDe('nombre')}
+              mensajeError={errores.nombre}
+              autoCapitalize="words"
+            />
 
-          <Campo
-            etiqueta="Correo electrónico"
-            icono="mail"
-            placeholder="Ej: maria.gomez@correo.com"
-            value={correo}
-            onChangeText={setCorreo}
-            onBlur={() => marcarTocado('correo')}
-            estado={estadoDe('correo')}
-            mensajeError={errores.correo}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+            <Campo
+              etiqueta="Apellido"
+              icono="user"
+              placeholder="Ej: Gómez"
+              value={apellido}
+              onChangeText={setApellido}
+              onBlur={() => marcarTocado('apellido')}
+              estado={estadoDe('apellido')}
+              mensajeError={errores.apellido}
+              autoCapitalize="words"
+            />
 
-          <Campo
-            etiqueta="Contraseña"
-            icono="lock"
-            placeholder="Escribí tu contraseña"
-            value={contrasena}
-            onChangeText={setContrasena}
-            onBlur={() => marcarTocado('contrasena')}
-            estado={estadoContrasena}
-            esContrasena
-          >
-            {/* Lista de requisitos, se actualiza en cada tecla:
+            <Campo
+              etiqueta="Correo electrónico"
+              icono="mail"
+              placeholder="Ej: maria.gomez@correo.com"
+              value={correo}
+              onChangeText={setCorreo}
+              onBlur={() => marcarTocado('correo')}
+              estado={estadoDe('correo')}
+              mensajeError={errores.correo}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <Campo
+              etiqueta="Contraseña"
+              icono="lock"
+              placeholder="Escribí tu contraseña"
+              value={contrasena}
+              onChangeText={setContrasena}
+              onBlur={() => marcarTocado('contrasena')}
+              estado={estadoContrasena}
+              esContrasena
+            >
+              {/* Lista de requisitos, se actualiza en cada tecla:
                   cumplido            → verde con tilde
                   no cumplido         → gris (rojo si ya saliste del campo) */}
-            <View style={styles.requisitos}>
-              {REQUISITOS_CONTRASENA.map((req) => {
-                const ok = req.cumple(contrasena);
-                const color = ok
-                  ? COLORES.verde
-                  : tocados.contrasena ? COLORES.rojo : COLORES.textoSuave;
-                return (
-                  <View key={req.texto} style={styles.requisito}>
-                    <Feather name={ok ? 'check-circle' : 'circle'} size={14} color={color} />
-                    <Text style={[styles.textoRequisito, { color }]}>{req.texto}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </Campo>
+              <View style={styles.requisitos}>
+                {REQUISITOS_CONTRASENA.map((req) => {
+                  const ok = req.cumple(contrasena);
+                  const color = ok
+                    ? COLORES.verde
+                    : tocados.contrasena
+                      ? COLORES.rojo
+                      : COLORES.textoSuave;
+                  return (
+                    <View key={req.texto} style={styles.requisito}>
+                      <Feather name={ok ? 'check-circle' : 'circle'} size={14} color={color} />
+                      <Text style={[styles.textoRequisito, { color }]}>{req.texto}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </Campo>
 
-          <Campo
-            etiqueta="Confirmar contraseña"
-            icono="lock"
-            placeholder="Repetí tu contraseña"
-            value={confirmacion}
-            onChangeText={setConfirmacion}
-            onBlur={() => marcarTocado('confirmacion')}
-            estado={estadoConfirmacion}
-            mensajeError={errores.confirmacion} // "no coinciden" u "obligatorio", en rojo
-            esContrasena
-          >
-            {/* Ayuda gris mientras está vacía; verde cuando coinciden */}
-            {estadoConfirmacion === 'neutral' && (
-              <Text style={styles.ayuda}>Las dos contraseñas deben coincidir</Text>
-            )}
-            {estadoConfirmacion === 'ok' && (
-              <View style={styles.filaError}>
-                <Feather name="check-circle" size={14} color={COLORES.verde} />
-                <Text style={[styles.textoError, { color: COLORES.verde }]}>
-                  {MENSAJES.coinciden}
-                </Text>
+            <Campo
+              etiqueta="Confirmar contraseña"
+              icono="lock"
+              placeholder="Repetí tu contraseña"
+              value={confirmacion}
+              onChangeText={setConfirmacion}
+              onBlur={() => marcarTocado('confirmacion')}
+              estado={estadoConfirmacion}
+              mensajeError={errores.confirmacion} // "no coinciden" u "obligatorio", en rojo
+              esContrasena
+            >
+              {/* Ayuda gris mientras está vacía; verde cuando coinciden */}
+              {estadoConfirmacion === 'neutral' && (
+                <Text style={styles.ayuda}>Las dos contraseñas deben coincidir</Text>
+              )}
+              {estadoConfirmacion === 'ok' && (
+                <View style={styles.filaError}>
+                  <Feather name="check-circle" size={14} color={COLORES.verde} />
+                  <Text style={[styles.textoError, { color: COLORES.verde }]}>
+                    {MENSAJES.coinciden}
+                  </Text>
+                </View>
+              )}
+            </Campo>
+
+            {/* Botón: deshabilitado (atenuado y sin acción) hasta que todo sea válido */}
+            {/* Carteles de resultado (en pantalla, porque Alert no se ve en el navegador) */}
+            {errorGeneral !== '' && (
+              <View style={[styles.cartel, styles.cartelError]}>
+                <Feather name="alert-circle" size={18} color={COLORES.rojo} />
+                <Text style={[styles.textoCartel, { color: COLORES.rojo }]}>{errorGeneral}</Text>
               </View>
             )}
-          </Campo>
-
-          {/* Botón: deshabilitado (atenuado y sin acción) hasta que todo sea válido */}
-          {/* Carteles de resultado (en pantalla, porque Alert no se ve en el navegador) */}
-          {errorGeneral !== '' && (
-            <View style={[styles.cartel, styles.cartelError]}>
-              <Feather name="alert-circle" size={18} color={COLORES.rojo} />
-              <Text style={[styles.textoCartel, { color: COLORES.rojo }]}>{errorGeneral}</Text>
-            </View>
-          )}
-          {exito && (
-            <View style={[styles.cartel, styles.cartelExito]}>
-              <Feather name="check-circle" size={18} color={COLORES.verde} />
-              <Text style={[styles.textoCartel, { color: COLORES.verde }]}>{MENSAJES.exito}</Text>
-            </View>
-          )}
-
-          {/* Botón: deshabilitado hasta que todo sea válido, mientras envía y después del éxito */}
-          <TouchableOpacity
-            style={[styles.boton, botonDeshabilitado && styles.botonDeshabilitado]}
-            onPress={handleSignUp}
-            disabled={botonDeshabilitado}
-            accessibilityState={{ disabled: botonDeshabilitado }} // lo anuncia el lector de pantalla
-          >
-            {enviando ? (
-              <View style={styles.filaCargando}>
-                <ActivityIndicator color={COLORES.blanco} />
-                <Text style={[styles.textoBoton, { marginLeft: 10 }]}>Creando cuenta…</Text>
+            {exito && (
+              <View style={[styles.cartel, styles.cartelExito]}>
+                <Feather name="check-circle" size={18} color={COLORES.verde} />
+                <Text style={[styles.textoCartel, { color: COLORES.verde }]}>{MENSAJES.exito}</Text>
               </View>
-            ) : (
-              <Text style={styles.textoBoton}>Registrarse</Text>
             )}
-          </TouchableOpacity>
-          {!formularioValido && !exito && (
-            <Text style={styles.ayudaBoton}>Completá todos los campos para continuar</Text>
-          )}
 
-          {/* Pie: pregunta y enlace en la misma línea */}
-          <View style={styles.pie}>
-            <Text style={styles.textoPie}>¿Ya tenés cuenta? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')} hitSlop={8}>
-              <Text style={styles.enlace}>Iniciar sesión</Text>
+            {/* Botón: deshabilitado hasta que todo sea válido, mientras envía y después del éxito */}
+            <TouchableOpacity
+              style={[styles.boton, botonDeshabilitado && styles.botonDeshabilitado]}
+              onPress={handleSignUp}
+              disabled={botonDeshabilitado}
+              accessibilityState={{ disabled: botonDeshabilitado }} // lo anuncia el lector de pantalla
+            >
+              {enviando ? (
+                <View style={styles.filaCargando}>
+                  <ActivityIndicator color={COLORES.blanco} />
+                  <Text style={[styles.textoBoton, { marginLeft: 10 }]}>Creando cuenta…</Text>
+                </View>
+              ) : (
+                <Text style={styles.textoBoton}>Registrarse</Text>
+              )}
             </TouchableOpacity>
+            {!formularioValido && !exito && (
+              <Text style={styles.ayudaBoton}>Completá todos los campos para continuar</Text>
+            )}
+
+            {/* Pie: pregunta y enlace en la misma línea */}
+            <View style={styles.pie}>
+              <Text style={styles.textoPie}>¿Ya tenés cuenta? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')} hitSlop={8}>
+                <Text style={estilosComunes.enlace}>Iniciar sesión</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -400,24 +411,41 @@ export default function SignUp({ navigation }) {
 }
 
 // ---------------------------------------------------------------------------
-// Estilos (medidas tomadas del Figma: pantalla de 390 px, márgenes de 24 px)
+// Estilos propios de esta pantalla. Lo compartido viene de estilosComunes.
 // ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
-  pantalla: { flex: 1, backgroundColor: COLORES.fondo },
+  scroll: { flexGrow: 1 },
 
   // Franja superior
-  franja: { backgroundColor: COLORES.celeste },
-  volver: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24, alignSelf: 'flex-start' },
+  franja: { alignItems: 'center', paddingBottom: 22 },
+  volver: { alignSelf: 'flex-start', paddingVertical: 4 },
+  logoCirculo: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: COLORES.blanco,
+    borderWidth: 3,
+    borderColor: COLORES.blanco,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    elevation: 4, // sombra en Android
+    shadowColor: '#000', // sombra en iOS
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  logo: { width: '100%', height: '100%' },
+  centrado: { textAlign: 'center' },
 
-  // Contenido desplazable
-  contenido: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
-  titulo: { fontSize: 30, fontWeight: '800', color: COLORES.titulo },
-  subtitulo: { fontSize: 14, color: COLORES.textoSuave, marginTop: 2, marginBottom: 16 },
+  // Formulario
+  contenido: { paddingHorizontal: MEDIDAS.margen, paddingTop: 20, paddingBottom: 40 },
 
   // Campo
   campo: { marginBottom: 14 },
   filaEtiqueta: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, marginLeft: 2 },
-  etiqueta: { fontSize: 14, color: COLORES.negro },
+  etiqueta: estilosComunes.etiqueta,
   asterisco: { color: COLORES.rojo },
   cartelOpcional: {
     marginLeft: 8,
@@ -426,40 +454,42 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: COLORES.gris,
   },
-  textoOpcional: { fontSize: 11, color: COLORES.textoSuave },
-  caja: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 52,
-    paddingHorizontal: 16,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    backgroundColor: COLORES.blanco,
-  },
+  textoOpcional: { fontFamily: FUENTES.media, fontSize: 11, color: COLORES.textoSuave },
+  caja: estilosComunes.caja,
   icono: { marginRight: 12 },
-  input: { flex: 1, fontSize: 16, color: COLORES.negro, height: '100%' },
+  input: estilosComunes.input,
 
   // Error debajo del campo
   filaError: { flexDirection: 'row', alignItems: 'center', marginTop: 6, marginLeft: 4 },
-  textoError: { fontSize: 13, color: COLORES.rojo, marginLeft: 6, flexShrink: 1 },
+  textoError: {
+    fontFamily: FUENTES.media,
+    fontSize: 13,
+    color: COLORES.rojo,
+    marginLeft: 6,
+    flexShrink: 1,
+  },
 
   // Ayudas debajo de las contraseñas
   requisitos: { marginTop: 8, marginLeft: 4 },
   requisito: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  textoRequisito: { fontSize: 13, color: COLORES.textoSuave, marginLeft: 8 },
-  ayuda: { fontSize: 13, color: COLORES.textoSuave, marginTop: 6, marginLeft: 4 },
-
-  // Botón
-  boton: {
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: COLORES.verde,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 18,
+  textoRequisito: {
+    fontFamily: FUENTES.regular,
+    fontSize: 13,
+    color: COLORES.textoSuave,
+    marginLeft: 8,
   },
-  textoBoton: { color: COLORES.blanco, fontSize: 18, fontWeight: '700' },
-  botonDeshabilitado: { opacity: 0.45 }, // mismo verde, atenuado
+  ayuda: {
+    fontFamily: FUENTES.regular,
+    fontSize: 13,
+    color: COLORES.textoSuave,
+    marginTop: 6,
+    marginLeft: 4,
+  },
+
+  // Botón (base común + separación)
+  boton: { ...estilosComunes.boton, marginTop: 18 },
+  textoBoton: estilosComunes.textoBoton,
+  botonDeshabilitado: estilosComunes.botonDeshabilitado,
   filaCargando: { flexDirection: 'row', alignItems: 'center' },
 
   // Carteles de resultado
@@ -467,17 +497,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 12,
+    borderRadius: MEDIDAS.radioCampo,
     borderWidth: 1,
     marginTop: 8,
   },
-  cartelError: { backgroundColor: '#FDECEA', borderColor: COLORES.rojo },
-  cartelExito: { backgroundColor: '#EEF6E8', borderColor: COLORES.verde },
-  textoCartel: { fontSize: 14, marginLeft: 8, flexShrink: 1 },
-  ayudaBoton: { fontSize: 13, color: COLORES.textoSuave, textAlign: 'center', marginTop: 8 },
+  cartelError: { backgroundColor: COLORES.rojoSuave, borderColor: COLORES.rojo },
+  cartelExito: { backgroundColor: COLORES.verdeSuave, borderColor: COLORES.verde },
+  textoCartel: { fontFamily: FUENTES.media, fontSize: 14, marginLeft: 8, flexShrink: 1 },
+  ayudaBoton: {
+    fontFamily: FUENTES.regular,
+    fontSize: 13,
+    color: COLORES.textoSuave,
+    textAlign: 'center',
+    marginTop: 8,
+  },
 
   // Pie
   pie: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 28 },
-  textoPie: { fontSize: 15, color: COLORES.textoSuave },
-  enlace: { fontSize: 15, fontWeight: '700', color: COLORES.violeta },
+  textoPie: { fontFamily: FUENTES.regular, fontSize: 15, color: COLORES.textoSuave },
 });
