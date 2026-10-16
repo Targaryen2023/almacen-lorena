@@ -40,7 +40,8 @@ export default function Navigation() {
         ) : (
           <>
             <Stack.Screen name="Login" component={Login} options={{ title: 'Iniciar sesión' }} />
-            <Stack.Screen name="SignUp" component={SignUp} options={{ title: 'Registro' }} />
+            {/* Registro dibuja su propia franja con la flecha (Figma 03), por eso sin encabezado */}
+            <Stack.Screen name="SignUp" component={SignUp} options={{ headerShown: false }} />
           </>
         )}
       </Stack.Navigator>
