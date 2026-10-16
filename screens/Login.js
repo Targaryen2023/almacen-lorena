@@ -112,6 +112,29 @@ export default function Login({ navigation }) {
     }
   };
   
+  const handleForgotPassword = async () => {
+    if (busy) return;
+    clearMessages();
+
+    const trimmed = email.trim();
+    if (!trimmed || !EMAIL_REGEX.test(trimmed)) {
+      setErrors({ email: 'Escribí tu correo para enviarte el enlace de recuperación.' });
+      emailRef.current?.focus();
+      return;
+    }
+
+    setErrors({});
+    setResetting(true);
+    try {
+      await sendPasswordResetEmail(auth, trimmed);
+      setNotice('Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.');
+    } catch (error) {
+      console.error('Error al recuperar contraseña:', error.code, error.message);
+      setFormError(getAuthErrorMessage(error.code));
+    } finally {
+      setResetting(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
