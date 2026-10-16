@@ -3,7 +3,9 @@
 // TAREA 1: maquetación.
 // TAREA 2: validación de nombre, apellido y correo al salir del campo,
 //          con borde rojo (error) / verde (correcto) y mensaje debajo.
-// Pendiente: contraseña y confirmación (tarea 3), botón (tarea 4), Firebase (tarea 5).
+// TAREA 3: requisitos de la contraseña que se pintan de verde mientras se escribe,
+//          y aviso en vivo de si la confirmación coincide o no.
+// Pendiente: botón (tarea 4), Firebase (tarea 5).
 
 import React, { useState } from 'react';
 import {
@@ -21,7 +23,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons'; // íconos de línea, como en el Figma
 import { auth } from '../src/config/firebaseConfig';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { validarNombre, validarCorreo } from '../src/validaciones';
+import {
+  validarNombre,
+  validarCorreo,
+  validarContrasena,
+  validarConfirmacion,
+  REQUISITOS_CONTRASENA,
+  MENSAJES,
+} from '../src/validaciones';
 
 // ---------------------------------------------------------------------------
 // Colores: paleta del Manual de Identidad + verde del Figma.
@@ -40,13 +49,6 @@ const COLORES = {
   blanco: '#FFFFFF',
 };
 
-// Requisitos de la contraseña. En la tarea 3 cada uno se pinta de verde al cumplirse.
-const REQUISITOS = [
-  'Mínimo 8 caracteres',
-  'Una letra mayúscula',
-  'Una letra minúscula',
-  'Un número',
-];
 
 // ---------------------------------------------------------------------------
 // Componente Campo: etiqueta + caja con ícono + mensaje/ayuda debajo.
@@ -132,7 +134,13 @@ export default function SignUp({ navigation }) {
   // "Tocado" = el usuario ya salió del campo al menos una vez.
   // Antes de eso el campo queda neutro (gris): no mostramos errores
   // de algo que la persona todavía no empezó a escribir.
-  const [tocados, setTocados] = useState({ nombre: false, apellido: false, correo: false });
+  const [tocados, setTocados] = useState({
+    nombre: false,
+    apellido: false,
+    correo: false,
+    contrasena: false,
+    confirmacion: false,
+  });
   const marcarTocado = (campo) => setTocados((prev) => ({ ...prev, [campo]: true }));
 
   // Errores calculados en cada render a partir del valor actual.
@@ -141,6 +149,8 @@ export default function SignUp({ navigation }) {
     nombre: validarNombre(nombre),
     apellido: validarNombre(apellido),
     correo: validarCorreo(correo),
+    contrasena: validarContrasena(contrasena),
+    confirmacion: validarConfirmacion(contrasena, confirmacion),
   };
 
   // neutral (sin tocar) → error (tocado y con error) → ok (tocado y sin error)
@@ -148,6 +158,16 @@ export default function SignUp({ navigation }) {
     if (!tocados[campo]) return 'neutral';
     return errores[campo] ? 'error' : 'ok';
   };
+
+  // La contraseña y la confirmación avisan EN VIVO (mientras se escribe),
+  // por eso no esperan al "tocado" para ponerse en verde.
+  const estadoContrasena =
+    contrasena && !errores.contrasena ? 'ok' : estadoDe('contrasena');
+
+  // Confirmación: en cuanto hay algo escrito, se compara con la contraseña.
+  const estadoConfirmacion = confirmacion
+    ? errores.confirmacion ? 'error' : 'ok'
+    : estadoDe('confirmacion'); // vacía: solo marca error si ya saliste del campo
 
   // Lógica de la guía, sin cambios: se reemplaza en la tarea 5.
   // Se deja para que el registro siga funcionando mientras se avanza.
@@ -233,16 +253,26 @@ export default function SignUp({ navigation }) {
             placeholder="Escribí tu contraseña"
             value={contrasena}
             onChangeText={setContrasena}
+            onBlur={() => marcarTocado('contrasena')}
+            estado={estadoContrasena}
             esContrasena
           >
-            {/* Lista de requisitos: en la tarea 3 cada uno pasa a verde */}
+            {/* Lista de requisitos, se actualiza en cada tecla:
+                  cumplido            → verde con tilde
+                  no cumplido         → gris (rojo si ya saliste del campo) */}
             <View style={styles.requisitos}>
-              {REQUISITOS.map((texto) => (
-                <View key={texto} style={styles.requisito}>
-                  <Feather name="circle" size={14} color={COLORES.textoSuave} />
-                  <Text style={styles.textoRequisito}>{texto}</Text>
-                </View>
-              ))}
+              {REQUISITOS_CONTRASENA.map((req) => {
+                const ok = req.cumple(contrasena);
+                const color = ok
+                  ? COLORES.verde
+                  : tocados.contrasena ? COLORES.rojo : COLORES.textoSuave;
+                return (
+                  <View key={req.texto} style={styles.requisito}>
+                    <Feather name={ok ? 'check-circle' : 'circle'} size={14} color={color} />
+                    <Text style={[styles.textoRequisito, { color }]}>{req.texto}</Text>
+                  </View>
+                );
+              })}
             </View>
           </Campo>
 
@@ -252,10 +282,23 @@ export default function SignUp({ navigation }) {
             placeholder="Repetí tu contraseña"
             value={confirmacion}
             onChangeText={setConfirmacion}
+            onBlur={() => marcarTocado('confirmacion')}
+            estado={estadoConfirmacion}
+            mensajeError={errores.confirmacion} // "no coinciden" u "obligatorio", en rojo
             esContrasena
           >
-            {/* En la tarea 3: "Las contraseñas coinciden" (verde) / "no coinciden" (rojo) */}
-            <Text style={styles.ayuda}>Las dos contraseñas deben coincidir</Text>
+            {/* Ayuda gris mientras está vacía; verde cuando coinciden */}
+            {estadoConfirmacion === 'neutral' && (
+              <Text style={styles.ayuda}>Las dos contraseñas deben coincidir</Text>
+            )}
+            {estadoConfirmacion === 'ok' && (
+              <View style={styles.filaError}>
+                <Feather name="check-circle" size={14} color={COLORES.verde} />
+                <Text style={[styles.textoError, { color: COLORES.verde }]}>
+                  {MENSAJES.coinciden}
+                </Text>
+              </View>
+            )}
           </Campo>
 
           <TouchableOpacity style={styles.boton} onPress={handleSignUp}>
