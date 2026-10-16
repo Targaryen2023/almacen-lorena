@@ -252,13 +252,47 @@ export default function Login({ navigation }) {
           {!!errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
 
 
-          <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Ingresar</Text>
+                    <TouchableOpacity
+            onPress={handleForgotPassword}
+            disabled={busy}
+            style={styles.forgotButton}
+            accessibilityRole="button"
+          >
+            {resetting ? (
+              <ActivityIndicator size="small" color={COLORS.primaryDark} />
+            ) : (
+              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-            <Text style={styles.signUpText}>¿No tienes cuenta aún? Regístrate</Text>
+          <TouchableOpacity
+            style={[styles.button, busy && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={busy}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Iniciar sesión"
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Iniciar sesión</Text>
+            )}
           </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>¿No tenés cuenta? </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('SignUp')}
+              disabled={busy}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.footerLink}>Crear cuenta</Text>
+            </TouchableOpacity>
+          </View>
+
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
