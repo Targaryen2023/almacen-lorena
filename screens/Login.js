@@ -136,6 +136,8 @@ export default function Login({ navigation }) {
     }
   };
 
+
+
   return (
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
@@ -180,59 +182,164 @@ export default function Login({ navigation }) {
   );
 }
 
+
 const styles = StyleSheet.create({
-  container: {
+  flex: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: COLORS.screenBg,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+
+  // Cabecera
+  header: {
+    backgroundColor: COLORS.headerBg,
     alignItems: 'center',
-    padding: 20,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
+  },
+  logoWrapper: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
     backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: 16,
+    borderWidth: 3,
+    borderColor: '#fff',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
+    width: '100%',
+    height: '100%',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    fontSize: 26,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  subtitle: {
+    marginTop: 4,
+    fontSize: 14,
+    color: COLORS.muted,
+    textAlign: 'center',
+  },
+
+  // Formulario
+  form: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 32,
   },
   label: {
-    alignSelf: 'flex-start',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 10,
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  labelSpaced: {
+    marginTop: 18,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderColor: '#b9770e',
-    marginBottom: 20,
-    width: '100%',
+    backgroundColor: COLORS.card,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 52,
   },
   icon: {
     marginRight: 10,
   },
   input: {
     flex: 1,
-    height: 40,
+    fontSize: 16,
+    color: COLORS.text,
+    height: '100%',
+  },
+  fieldError: {
+    marginTop: 6,
+    fontSize: 13,
+    color: COLORS.danger,
+  },
+
+  // Mensajes
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 18,
+  },
+  bannerError: {
+    backgroundColor: COLORS.dangerBg,
+  },
+  bannerSuccess: {
+    backgroundColor: COLORS.successBg,
+  },
+  bannerText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Acciones
+  forgotButton: {
+    alignSelf: 'flex-start',
+    marginTop: 16,
+    marginBottom: 20,
+    minHeight: 20,
+    justifyContent: 'center',
+  },
+  forgotText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
   },
   button: {
-    backgroundColor: '#922b21',
-    paddingVertical: 10,
-    paddingHorizontal: 40,
-    borderRadius: 5,
-    marginTop: 20,
+    backgroundColor: COLORS.primary,
+    height: 52,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: COLORS.primaryDark,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
-  signUpText: {
-    marginTop: 20,
-    color: '#007AFF',
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  footerText: {
+    fontSize: 14,
+    color: COLORS.muted,
+  },
+  footerLink: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
   },
 });
