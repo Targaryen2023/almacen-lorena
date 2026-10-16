@@ -61,9 +61,22 @@ const getAuthErrorMessage = (code) => {
 
 
 export default function Login({ navigation }) {
+  const insets = useSafeAreaInsets();
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const busy = loading || resetting;
+
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
