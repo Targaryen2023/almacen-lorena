@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -59,6 +60,51 @@ const getAuthErrorMessage = (code) => {
   }
 };
 
+// Texto de ejemplo con fines académicos: revisar y ajustar con el equipo antes de la entrega.
+const LEGAL_DOCS = {
+  terms: {
+    title: 'Términos y condiciones',
+    sections: [
+      {
+        heading: '1. Uso de la aplicación',
+        body: 'La aplicación está destinada a la gestión del inventario del negocio. El acceso es personal: cada usuario debe ingresar con su propia cuenta.',
+      },
+      {
+        heading: '2. Cuenta y contraseña',
+        body: 'Sos responsable de mantener la confidencialidad de tu contraseña y de la actividad realizada con tu cuenta. Si sospechás un uso no autorizado, cambiá tu contraseña.',
+      },
+      {
+        heading: '3. Uso adecuado',
+        body: 'No está permitido intentar acceder a cuentas ajenas ni usar la aplicación para fines distintos a los previstos.',
+      },
+      {
+        heading: '4. Cambios',
+        body: 'Estos términos pueden actualizarse. Cuando eso ocurra, se publicará la nueva versión en la aplicación.',
+      },
+    ],
+  },
+  privacy: {
+    title: 'Política de privacidad',
+    sections: [
+      {
+        heading: '1. Datos que se recopilan',
+        body: 'Para crear tu cuenta y permitirte iniciar sesión se utilizan tu correo electrónico y una contraseña.',
+      },
+      {
+        heading: '2. Cómo se usan',
+        body: 'Los datos se usan únicamente para identificarte y dar acceso a la aplicación. La autenticación se realiza mediante Firebase Authentication.',
+      },
+      {
+        heading: '3. Seguridad',
+        body: 'La aplicación no almacena tu contraseña: la gestiona el servicio de autenticación.',
+      },
+      {
+        heading: '4. Consultas',
+        body: 'Para consultas sobre tus datos, comunicate con el responsable del negocio.',
+      },
+    ],
+  },
+};
 
 export default function Login({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -74,6 +120,8 @@ export default function Login({ navigation }) {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [legalDoc, setLegalDoc] = useState(null); // null | 'terms' | 'privacy'
+
 
   const busy = loading || resetting;
 
@@ -253,7 +301,7 @@ export default function Login({ navigation }) {
           {!!errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
 
 
-                    <TouchableOpacity
+          <TouchableOpacity
             onPress={handleForgotPassword}
             disabled={busy}
             style={styles.forgotButton}
@@ -292,10 +340,61 @@ export default function Login({ navigation }) {
               <Text style={styles.footerLink}>Crear cuenta</Text>
             </TouchableOpacity>
           </View>
+            <View style={styles.legalContainer}>
+            
+              <Text style={styles.legalText}>
+                Al iniciar sesión aceptás nuestros{' '}
+                <Text
+                  style={styles.legalLink}
+                  onPress={() => setLegalDoc('terms')}
+                  accessibilityRole="link"
+                >
+                  Términos y condiciones
+                </Text>{' '}
+                y la{' '}
+                <Text
+                  style={styles.legalLink}
+                  onPress={() => setLegalDoc('privacy')}
+                  accessibilityRole="link"
+                >
+                  Política de privacidad
+                </Text>
+                
+              </Text>
+            </View>
 
 
         </View>
       </ScrollView>
+            <Modal
+        visible={!!legalDoc}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setLegalDoc(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { paddingBottom: insets.bottom + 16 }]}>
+            <Text style={styles.modalTitle}>{legalDoc ? LEGAL_DOCS[legalDoc].title : ''}</Text>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator>
+              {legalDoc &&
+                LEGAL_DOCS[legalDoc].sections.map((section) => (
+                  <View key={section.heading}>
+                    <Text style={styles.modalHeading}>{section.heading}</Text>
+                    <Text style={styles.modalText}>{section.body}</Text>
+                  </View>
+                ))}
+            </ScrollView>
+            <TouchableOpacity
+              style={[styles.button, { marginTop: 16 }]}
+              onPress={() => setLegalDoc(null)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+            >
+              <Text style={styles.buttonText}>Entendido</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -525,5 +624,62 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.primaryDark,
+  },
+    // Pie legal
+  legalContainer: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+    paddingTop: 32,
+  },
+  legalDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginBottom: 16,
+  },
+  legalText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.muted,
+    textAlign: 'center',
+  },
+  legalLink: {
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+  },
+
+  // Ventana de términos
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginBottom: 12,
+  },
+  modalBody: {
+    flexGrow: 0,
+  },
+  modalHeading: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginTop: 12,
+  },
+  modalText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: COLORS.muted,
+    marginTop: 4,
   },
 });
