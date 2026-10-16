@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -10,15 +10,17 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useColorScheme,
   View,
 } from 'react-native';
+
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../src/config/firebaseConfig';
 
-const COLORS = {
+const LIGHT_COLORS = {
   headerBg: '#D9EBF8',
   screenBg: '#F0F6FA',
   card: '#FFFFFF',
@@ -26,13 +28,26 @@ const COLORS = {
   muted: '#5B6B7A',
   placeholder: '#8A97A4',
   border: '#D5DEE6',
-  // primary: '#8C63D6',
-  // primaryDark: '#754FC2',
   primary: '#754FC2',
   primaryDark: '#8C63D6',
   danger: '#C0392B',
   dangerBg: '#FDECEA',
-  successBg: '#E9E0F8'
+  successBg: '#E9E0F8',
+};
+
+const DARK_COLORS = {
+  headerBg: '#221F2B',
+  screenBg: '#14121A',
+  card: '#26232F',
+  text: '#F2EFF7',
+  muted: '#A9A3B8',
+  placeholder: '#7C768C',
+  border: '#3A3646',
+  primary: '#8C63D6',
+  primaryDark: '#B79BEA',
+  danger: '#FF8A8A',
+  dangerBg: '#3A1F26',
+  successBg: '#2E2545',
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -122,6 +137,10 @@ export default function Login({ navigation }) {
   const [resetting, setResetting] = useState(false);
   const [legalDoc, setLegalDoc] = useState(null); // null | 'terms' | 'privacy'
 
+  const systemScheme = useColorScheme();
+  const [isDark, setIsDark] = useState(systemScheme === 'dark');
+  const COLORS = isDark ? DARK_COLORS : LIGHT_COLORS;
+  const styles = useMemo(() => createStyles(COLORS), [isDark]);
 
   const busy = loading || resetting;
 
@@ -204,6 +223,20 @@ export default function Login({ navigation }) {
       >
         {/* Cabecera */}
         <View style={[styles.header, { paddingTop: insets.top + 28 }]}>
+
+          <View style={[styles.header, { paddingTop: insets.top + 28 }]}>
+            <TouchableOpacity
+              style={[styles.themeToggle, { top: insets.top + 12 }]}
+              onPress={() => setIsDark((prev) => !prev)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: isDark }}
+              accessibilityLabel="Modo oscuro"
+            >
+              <Feather name={isDark ? 'sun' : 'moon'} size={20} color={COLORS.primaryDark} />
+            </TouchableOpacity>
+
+          </View>
           <View style={styles.logoWrapper}>
             <Image
               source={require('../assets/logo.png')}
@@ -400,7 +433,7 @@ export default function Login({ navigation }) {
 }
 
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   flex: {
     flex: 1,
     backgroundColor: COLORS.screenBg,
