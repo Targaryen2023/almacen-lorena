@@ -18,6 +18,48 @@ import { Feather, FontAwesome } from '@expo/vector-icons';
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../src/config/firebaseConfig';
 
+const COLORS = {
+  headerBg: '#D9EBF8',
+  screenBg: '#F0F6FA',
+  card: '#FFFFFF',
+  text: '#1B1F23',
+  muted: '#5B6B7A',
+  placeholder: '#8A97A4',
+  border: '#D5DEE6',
+  primary: '#8C63D6',
+  // primaryDark: '#2E6B1F',
+  primaryDark: '#754FC2',
+  danger: '#C0392B',
+  dangerBg: '#FDECEA',
+  successBg: '#E8F5E1',
+};
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Traduce el código de error de Firebase a un mensaje claro para el usuario.
+// Para credenciales incorrectas no se aclara si falló el correo o la clave (buena práctica de seguridad).
+const getAuthErrorMessage = (code) => {
+  switch (code) {
+    case 'auth/invalid-email':
+      return 'El formato del correo electrónico no es válido.';
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Correo o contraseña incorrectos.';
+    case 'auth/user-disabled':
+      return 'Esta cuenta fue deshabilitada.';
+    case 'auth/too-many-requests':
+      return 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.';
+    case 'auth/network-request-failed':
+      return 'Sin conexión. Revisá tu internet e intentá de nuevo.';
+    case 'auth/invalid-api-key':
+      return 'La clave API de Firebase no es válida. Revisá la configuración.';
+    default:
+      return 'No pudimos iniciar sesión. Intentá de nuevo.';
+  }
+};
+
+
 export default function Login({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
