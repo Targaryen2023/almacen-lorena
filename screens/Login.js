@@ -33,6 +33,7 @@ const LIGHT_COLORS = {
   danger: '#C0392B',
   dangerBg: '#FDECEA',
   successBg: '#E9E0F8',
+  logoBg: '#FFFFFF',
 };
 
 const DARK_COLORS = {
@@ -48,9 +49,13 @@ const DARK_COLORS = {
   danger: '#FF8A8A',
   dangerBg: '#3A1F26',
   successBg: '#2E2545',
+  logoBg: '#0F0E14',
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const LOGO_LIGHT = require('../assets/logo.png');
+const LOGO_DARK = require('../assets/logo-dark.png');
+
 
 // Traduce el código de error de Firebase a un mensaje claro para el usuario.
 // Para credenciales incorrectas no se aclara si falló el correo o la clave (buena práctica de seguridad).
@@ -239,11 +244,12 @@ export default function Login({ navigation }) {
           </View>
           <View style={styles.logoWrapper}>
             <Image
-              source={require('../assets/logo.png')}
-              style={styles.logo}
-              // resizeMode="contain"
-              resizeMode="cover"
-              accessibilityLabel="Logo del negocio"
+            
+             source={isDark ? LOGO_DARK : LOGO_LIGHT}
+             style={[styles.logo, isDark && styles.logoDark]}
+             resizeMode="cover"
+             accessibilityLabel="Logo del negocio"
+
             />
           </View>
           <Text style={styles.title} accessibilityRole="header">
@@ -468,7 +474,8 @@ const createStyles = (COLORS) => StyleSheet.create({
     width: 124,
     height: 124,
     borderRadius: 62,
-    backgroundColor: '#fff',
+    // backgroundColor: '#fff',
+    backgroundColor: COLORS.logoBg,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -485,6 +492,9 @@ const createStyles = (COLORS) => StyleSheet.create({
     width: '100%',
     height: '100%',
     transform: [{ scale: 1.18 }],
+  },
+  logoDark: {
+    transform: [{ scale: 1 }],
   },
   title: {
     // fontSize: 26,
