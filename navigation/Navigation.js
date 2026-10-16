@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../src/config/firebaseConfig';
+import { estadoRegistro } from '../src/estadoRegistro';
 import Login from '../screens/Login';
 import SignUp from '../screens/SignUp';
 import Home from '../screens/Home';
@@ -15,7 +16,12 @@ export default function Navigation() {
 
   useEffect(() => {
     if (!auth) return;
-    return onAuthStateChanged(auth, setUser);
+    return onAuthStateChanged(auth, (usuario) => {
+      // Durante el registro se ignora la sesión automática de Firebase,
+      // así no salta a Home: SignUp cierra la sesión y vuelve a Login.
+      if (estadoRegistro.enCurso) return;
+      setUser(usuario);
+    });
   }, []);
 
   if (!isFirebaseConfigured) {

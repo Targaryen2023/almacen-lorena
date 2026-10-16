@@ -18,6 +18,11 @@ export const MENSAJES = {
   contrasena: 'La contraseña no cumple todos los requisitos',
   noCoinciden: 'Las contraseñas no coinciden',
   coinciden: 'Las contraseñas coinciden',
+  // Mensajes de Firebase (tarea 5)
+  correoRegistrado: 'Este correo electrónico ya se encuentra registrado',
+  sinConexion: 'No hay conexión. Revisá tu internet e intentá de nuevo.',
+  errorGeneral: 'No se pudo crear la cuenta. Intentá de nuevo en unos minutos.',
+  exito: '¡Cuenta creada! Te llevamos a iniciar sesión…',
 };
 
 // Requisitos de la contraseña. Cada uno tiene:

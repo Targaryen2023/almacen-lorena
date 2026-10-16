@@ -6,7 +6,9 @@
 // TAREA 3: requisitos de la contraseña que se pintan de verde mientras se escribe,
 //          y aviso en vivo de si la confirmación coincide o no.
 // TAREA 4: botón "Registrarse" deshabilitado hasta que todos los campos sean válidos.
-// Pendiente: Firebase (tarea 5).
+// TAREA 5: crea el usuario en Firebase (nombre y apellido en displayName),
+//          avisa si el correo ya existe, muestra los mensajes en pantalla
+//          (Alert no funciona en el navegador) y al terminar vuelve a Login.
 
 import React, { useState } from 'react';
 import {
@@ -18,12 +20,13 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons'; // íconos de línea, como en el Figma
 import { auth } from '../src/config/firebaseConfig';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
+import { estadoRegistro } from '../src/estadoRegistro';
 import {
   validarNombre,
   validarCorreo,
@@ -144,12 +147,22 @@ export default function SignUp({ navigation }) {
   });
   const marcarTocado = (campo) => setTocados((prev) => ({ ...prev, [campo]: true }));
 
+  // TAREA 5: estados del envío a Firebase
+  const [enviando, setEnviando] = useState(false);          // muestra "Creando cuenta…"
+  const [exito, setExito] = useState(false);                // muestra el cartel verde
+  const [errorGeneral, setErrorGeneral] = useState('');     // cartel rojo (sin conexión, etc.)
+  const [correoRegistrado, setCorreoRegistrado] = useState(''); // correo que Firebase rechazó por repetido
+
   // Errores calculados en cada render a partir del valor actual.
   // Así, una vez tocado, el error se borra apenas el usuario lo corrige.
   const errores = {
     nombre: validarNombre(nombre),
     apellido: validarNombre(apellido),
-    correo: validarCorreo(correo),
+    // Además del formato, el correo da error si es el mismo que Firebase ya rechazó.
+    // Apenas el usuario lo cambia, el error desaparece.
+    correo:
+      validarCorreo(correo) ||
+      (correo.trim().toLowerCase() === correoRegistrado ? MENSAJES.correoRegistrado : ''),
     contrasena: validarContrasena(contrasena),
     confirmacion: validarConfirmacion(contrasena, confirmacion),
   };
@@ -174,16 +187,54 @@ export default function SignUp({ navigation }) {
   // Object.values(errores) → ['', '', 'Este campo es obligatorio', ...]
   // .every(...)            → true únicamente si todos son '' (sin error)
   const formularioValido = Object.values(errores).every((error) => error === '');
+  const botonDeshabilitado = !formularioValido || enviando || exito;
 
-  // Lógica de Firebase de la guía: se reemplaza en la tarea 5.
+  // TAREA 5: registro en Firebase
   const handleSignUp = async () => {
     // Doble seguro: aunque el botón esté deshabilitado, no se envía nada inválido.
-    if (!formularioValido) return;
+    if (!formularioValido || enviando) return;
+
+    setEnviando(true);
+    setErrorGeneral('');
+    estadoRegistro.enCurso = true; // Navigation no salta a Home mientras dura esto
+
     try {
-      const credencial = await createUserWithEmailAndPassword(auth, correo.trim(), contrasena);
-      await updateProfile(credencial.user, { displayName: `${nombre.trim()} ${apellido.trim()}` });
+      // 1) Crear la cuenta (Firebase además inicia sesión con ella)
+      const credencial = await createUserWithEmailAndPassword(
+        auth,
+        correo.trim().toLowerCase(),
+        contrasena
+      );
+
+      // 2) Guardar "Nombre Apellido". Si falla, la cuenta igual quedó creada.
+      try {
+        await updateProfile(credencial.user, {
+          displayName: `${nombre.trim()} ${apellido.trim()}`,
+        });
+      } catch (e) {
+        console.warn('No se pudo guardar el nombre:', e.code);
+      }
+
+      // 3) Cerrar la sesión automática: el usuario tiene que entrar desde Login
+      await signOut(auth);
+
+      // 4) Avisar y volver a Login
+      setExito(true);
+      setTimeout(() => navigation.navigate('Login'), 2000);
     } catch (error) {
-      Alert.alert('Error', `No se pudo registrar.\n\nCódigo: ${error.code ?? 'desconocido'}`);
+      console.warn('Error de registro:', error.code);
+      if (error.code === 'auth/email-already-in-use') {
+        // El error se muestra en el propio campo de correo
+        setCorreoRegistrado(correo.trim().toLowerCase());
+        marcarTocado('correo');
+      } else if (error.code === 'auth/network-request-failed') {
+        setErrorGeneral(MENSAJES.sinConexion);
+      } else {
+        setErrorGeneral(MENSAJES.errorGeneral);
+      }
+    } finally {
+      estadoRegistro.enCurso = false;
+      setEnviando(false);
     }
   };
 
@@ -301,15 +352,37 @@ export default function SignUp({ navigation }) {
           </Campo>
 
           {/* Botón: deshabilitado (atenuado y sin acción) hasta que todo sea válido */}
+          {/* Carteles de resultado (en pantalla, porque Alert no se ve en el navegador) */}
+          {errorGeneral !== '' && (
+            <View style={[styles.cartel, styles.cartelError]}>
+              <Feather name="alert-circle" size={18} color={COLORES.rojo} />
+              <Text style={[styles.textoCartel, { color: COLORES.rojo }]}>{errorGeneral}</Text>
+            </View>
+          )}
+          {exito && (
+            <View style={[styles.cartel, styles.cartelExito]}>
+              <Feather name="check-circle" size={18} color={COLORES.verde} />
+              <Text style={[styles.textoCartel, { color: COLORES.verde }]}>{MENSAJES.exito}</Text>
+            </View>
+          )}
+
+          {/* Botón: deshabilitado hasta que todo sea válido, mientras envía y después del éxito */}
           <TouchableOpacity
-            style={[styles.boton, !formularioValido && styles.botonDeshabilitado]}
+            style={[styles.boton, botonDeshabilitado && styles.botonDeshabilitado]}
             onPress={handleSignUp}
-            disabled={!formularioValido}
-            accessibilityState={{ disabled: !formularioValido }} // lo anuncia el lector de pantalla
+            disabled={botonDeshabilitado}
+            accessibilityState={{ disabled: botonDeshabilitado }} // lo anuncia el lector de pantalla
           >
-            <Text style={styles.textoBoton}>Registrarse</Text>
+            {enviando ? (
+              <View style={styles.filaCargando}>
+                <ActivityIndicator color={COLORES.blanco} />
+                <Text style={[styles.textoBoton, { marginLeft: 10 }]}>Creando cuenta…</Text>
+              </View>
+            ) : (
+              <Text style={styles.textoBoton}>Registrarse</Text>
+            )}
           </TouchableOpacity>
-          {!formularioValido && (
+          {!formularioValido && !exito && (
             <Text style={styles.ayudaBoton}>Completá todos los campos para continuar</Text>
           )}
 
@@ -387,6 +460,20 @@ const styles = StyleSheet.create({
   },
   textoBoton: { color: COLORES.blanco, fontSize: 18, fontWeight: '700' },
   botonDeshabilitado: { opacity: 0.45 }, // mismo verde, atenuado
+  filaCargando: { flexDirection: 'row', alignItems: 'center' },
+
+  // Carteles de resultado
+  cartel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  cartelError: { backgroundColor: '#FDECEA', borderColor: COLORES.rojo },
+  cartelExito: { backgroundColor: '#EEF6E8', borderColor: COLORES.verde },
+  textoCartel: { fontSize: 14, marginLeft: 8, flexShrink: 1 },
   ayudaBoton: { fontSize: 13, color: COLORES.textoSuave, textAlign: 'center', marginTop: 8 },
 
   // Pie
