@@ -1,7 +1,9 @@
 // screens/SignUp.js
 // Pantalla de Registro (Figma 03 · Registro, con los cambios acordados).
-// TAREA 1: solo maquetación. Las validaciones y los colores de estado
-// (rojo / verde) se conectan en las tareas 2, 3 y 4.
+// TAREA 1: maquetación.
+// TAREA 2: validación de nombre, apellido y correo al salir del campo,
+//          con borde rojo (error) / verde (correcto) y mensaje debajo.
+// Pendiente: contraseña y confirmación (tarea 3), botón (tarea 4), Firebase (tarea 5).
 
 import React, { useState } from 'react';
 import {
@@ -19,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons'; // íconos de línea, como en el Figma
 import { auth } from '../src/config/firebaseConfig';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { validarNombre, validarCorreo } from '../src/validaciones';
 
 // ---------------------------------------------------------------------------
 // Colores: paleta del Manual de Identidad + verde del Figma.
@@ -46,23 +49,25 @@ const REQUISITOS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Componente Campo: etiqueta + caja con ícono + texto de ayuda debajo.
-// Se reutiliza en los 6 campos para no repetir el mismo bloque.
+// Componente Campo: etiqueta + caja con ícono + mensaje/ayuda debajo.
 //   estado: 'neutral' | 'error' | 'ok'  → cambia el color del borde.
-//   obligatorio: muestra " *"; si es false muestra el cartel "Opcional".
+//   mensajeError: texto rojo que aparece debajo cuando estado es 'error'.
+//   obligatorio: muestra " *"; si es false muestra el cartel "Opcional"
+//   (hoy no hay campos opcionales, queda listo por si se agrega alguno).
 // ---------------------------------------------------------------------------
 function Campo({
   etiqueta,
   obligatorio = true,
   icono,
   estado = 'neutral',
+  mensajeError = '',
   esContrasena = false,
-  children, // contenido que va debajo de la caja (ayudas, requisitos, errores)
-  ...propsInput // el resto de las props va directo al TextInput
+  children, // contenido que va debajo de la caja (ayudas, requisitos)
+  ...propsInput // el resto de las props va directo al TextInput (value, onBlur, etc.)
 }) {
   const [visible, setVisible] = useState(false); // ojo de la contraseña
 
-  // Color del borde según el estado (lo usan las tareas 2 y 3)
+  // Color del borde según el estado
   const colorBorde =
     estado === 'error' ? COLORES.rojo : estado === 'ok' ? COLORES.verde : COLORES.gris;
 
@@ -90,12 +95,24 @@ function Campo({
           secureTextEntry={esContrasena && !visible}
           {...propsInput}
         />
+        {/* Tilde verde cuando el campo está bien (no en contraseñas: ahí va el ojo) */}
+        {estado === 'ok' && !esContrasena && (
+          <Feather name="check-circle" size={20} color={COLORES.verde} />
+        )}
         {esContrasena && (
           <TouchableOpacity onPress={() => setVisible(!visible)} hitSlop={10}>
             <Feather name={visible ? 'eye-off' : 'eye'} size={20} color={COLORES.textoSuave} />
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Mensaje de error debajo de la caja */}
+      {estado === 'error' && mensajeError !== '' && (
+        <View style={styles.filaError}>
+          <Feather name="alert-circle" size={14} color={COLORES.rojo} />
+          <Text style={styles.textoError}>{mensajeError}</Text>
+        </View>
+      )}
 
       {children}
     </View>
@@ -109,12 +126,31 @@ export default function SignUp({ navigation }) {
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [correo, setCorreo] = useState('');
-  const [telefono, setTelefono] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [confirmacion, setConfirmacion] = useState('');
 
+  // "Tocado" = el usuario ya salió del campo al menos una vez.
+  // Antes de eso el campo queda neutro (gris): no mostramos errores
+  // de algo que la persona todavía no empezó a escribir.
+  const [tocados, setTocados] = useState({ nombre: false, apellido: false, correo: false });
+  const marcarTocado = (campo) => setTocados((prev) => ({ ...prev, [campo]: true }));
+
+  // Errores calculados en cada render a partir del valor actual.
+  // Así, una vez tocado, el error se borra apenas el usuario lo corrige.
+  const errores = {
+    nombre: validarNombre(nombre),
+    apellido: validarNombre(apellido),
+    correo: validarCorreo(correo),
+  };
+
+  // neutral (sin tocar) → error (tocado y con error) → ok (tocado y sin error)
+  const estadoDe = (campo) => {
+    if (!tocados[campo]) return 'neutral';
+    return errores[campo] ? 'error' : 'ok';
+  };
+
   // Lógica de la guía, sin cambios: se reemplaza en la tarea 5.
-  // Se deja para que el registro siga funcionando mientras se maqueta.
+  // Se deja para que el registro siga funcionando mientras se avanza.
   const handleSignUp = async () => {
     if (!nombre.trim() || !apellido.trim() || !correo.trim() || !contrasena || !confirmacion) {
       Alert.alert('Error', 'Todos los campos son obligatorios.');
@@ -141,7 +177,7 @@ export default function SignUp({ navigation }) {
         </TouchableOpacity>
       </SafeAreaView>
 
-      {/* KeyboardAvoidingView + ScrollView: con 6 campos el teclado tapa los de abajo */}
+      {/* KeyboardAvoidingView + ScrollView: con 5 campos el teclado tapa los de abajo */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -159,6 +195,9 @@ export default function SignUp({ navigation }) {
             placeholder="Ej: María"
             value={nombre}
             onChangeText={setNombre}
+            onBlur={() => marcarTocado('nombre')} // valida al salir del campo
+            estado={estadoDe('nombre')}
+            mensajeError={errores.nombre}
             autoCapitalize="words"
           />
 
@@ -168,6 +207,9 @@ export default function SignUp({ navigation }) {
             placeholder="Ej: Gómez"
             value={apellido}
             onChangeText={setApellido}
+            onBlur={() => marcarTocado('apellido')}
+            estado={estadoDe('apellido')}
+            mensajeError={errores.apellido}
             autoCapitalize="words"
           />
 
@@ -177,19 +219,12 @@ export default function SignUp({ navigation }) {
             placeholder="Ej: maria.gomez@correo.com"
             value={correo}
             onChangeText={setCorreo}
+            onBlur={() => marcarTocado('correo')}
+            estado={estadoDe('correo')}
+            mensajeError={errores.correo}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-          />
-
-          <Campo
-            etiqueta="Teléfono"
-            obligatorio={false}
-            icono="phone"
-            placeholder="Ej: 387 412 3456"
-            value={telefono}
-            onChangeText={setTelefono}
-            keyboardType="phone-pad"
           />
 
           <Campo
@@ -279,6 +314,10 @@ const styles = StyleSheet.create({
   },
   icono: { marginRight: 12 },
   input: { flex: 1, fontSize: 16, color: COLORES.negro, height: '100%' },
+
+  // Error debajo del campo
+  filaError: { flexDirection: 'row', alignItems: 'center', marginTop: 6, marginLeft: 4 },
+  textoError: { fontSize: 13, color: COLORES.rojo, marginLeft: 6, flexShrink: 1 },
 
   // Ayudas debajo de las contraseñas
   requisitos: { marginTop: 8, marginLeft: 4 },
