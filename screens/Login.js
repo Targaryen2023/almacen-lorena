@@ -136,7 +136,11 @@ export default function Login({ navigation }) {
     }
   };
 
-
+  const inputBorder = (field) => {
+    if (errors[field]) return COLORS.danger;
+    if (focusedField === field) return COLORS.primary;
+    return COLORS.border;
+  };
 
    return (
     <KeyboardAvoidingView
@@ -168,33 +172,85 @@ export default function Login({ navigation }) {
 
         {/* Formulario (los campos de acá se reemplazan en los pasos 10 y 11) */}
         <View style={styles.form}>
-          <Text style={styles.label}>Correo</Text>
-          <View style={styles.inputContainer}>
-            <FontAwesome name="envelope" size={20} color="#ccc" style={styles.icon} />
+              {!!formError && (
+            <View style={[styles.banner, styles.bannerError]} accessibilityLiveRegion="polite">
+              <Feather name="alert-circle" size={18} color={COLORS.danger} />
+              <Text style={[styles.bannerText, { color: COLORS.danger }]}>{formError}</Text>
+            </View>
+          )}
+          {!!notice && (
+            <View style={[styles.banner, styles.bannerSuccess]} accessibilityLiveRegion="polite">
+              <Feather name="check-circle" size={18} color={COLORS.primaryDark} />
+              <Text style={[styles.bannerText, { color: COLORS.primaryDark }]}>{notice}</Text>
+            </View>
+          )}
+
+          <Text style={styles.label}>Correo electrónico</Text>
+          <View style={[styles.inputContainer, { borderColor: inputBorder('email') }]}>
+            <Feather name="mail" size={20} color={COLORS.muted} style={styles.icon} />
             <TextInput
+              ref={emailRef}
               style={styles.input}
-              placeholder="Ingrese su correo"
+              placeholder="nombre@correo.com"
+              placeholderTextColor={COLORS.placeholder}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                if (formError) setFormError('');
+              }}
+              onFocus={() => setFocusedField('email')}
+              onBlur={() => setFocusedField(null)}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              editable={!busy}
+              accessibilityLabel="Correo electrónico"
             />
           </View>
+          {!!errors.email && <Text style={styles.fieldError}>{errors.email}</Text>}
 
-          <Text style={styles.label}>Contraseña</Text>
-          <View style={styles.inputContainer}>
-            <FontAwesome name="lock" size={20} color="#ccc" style={styles.icon} />
+          <Text style={[styles.label, styles.labelSpaced]}>Contraseña</Text>
+          <View style={[styles.inputContainer, { borderColor: inputBorder('password') }]}>
+            <Feather name="lock" size={20} color={COLORS.muted} style={styles.icon} />
             <TextInput
+              ref={passwordRef}
               style={styles.input}
-              placeholder="Ingrese su contraseña"
+              placeholder="Tu contraseña"
+              placeholderTextColor={COLORS.placeholder}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                if (formError) setFormError('');
+              }}
+              onFocus={() => setFocusedField('password')}
+              onBlur={() => setFocusedField(null)}
               secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="password"
+              textContentType="password"
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+              editable={!busy}
+              accessibilityLabel="Contraseña"
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <FontAwesome name={showPassword ? 'eye-slash' : 'eye'} size={20} color="#ccc" />
+            <TouchableOpacity
+              onPress={() => setShowPassword((prev) => !prev)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color={COLORS.muted} />
             </TouchableOpacity>
           </View>
+          {!!errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
+
 
           <TouchableOpacity style={styles.button} onPress={handleLogin}>
             <Text style={styles.buttonText}>Ingresar</Text>
