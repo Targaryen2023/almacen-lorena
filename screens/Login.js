@@ -81,6 +81,21 @@ export default function Login({ navigation }) {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
+    const validate = () => {
+    const next = {};
+    const trimmed = email.trim();
+    if (!trimmed) next.email = 'ejemplo:usuario@email.com';
+    else if (!EMAIL_REGEX.test(trimmed)) next.email = 'El formato del correo no es válido.';
+    if (!password) next.password = 'Ingresá tu contraseña.';
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const clearMessages = () => {
+    setFormError('');
+    setNotice('');
+  };
+
   const handleLogin = async () => {
     if (!email.trim() || !password) {
       Alert.alert("Error", "Por favor ingrese ambos campos.");
