@@ -97,39 +97,21 @@ export default function Login({ navigation }) {
   };
 
   const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      Alert.alert("Error", "Por favor ingrese ambos campos.");
-      return;
-    }
+    if (busy) return;
+    clearMessages();
+    if (!validate()) return;
 
+    setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      Alert.alert("Login exitoso", "Has iniciado sesión correctamente.");
-      // El observador de Firebase cambia la pantalla al detectar la sesión.
+      // Si sale bien, onAuthStateChanged (en Navigation.js) cambia solo a la pantalla Home.
     } catch (error) {
       console.error('Error de inicio de sesión:', error.code, error.message);
-      let errorMessage = "Hubo un problema al iniciar sesión.";
-      switch (error.code) {
-        case 'auth/invalid-email':
-          errorMessage = "El formato del correo electrónico no es válido.";
-          break;
-        case 'auth/invalid-credential':
-        case 'auth/wrong-password':
-          errorMessage = "La contraseña es incorrecta.";
-          break;
-        case 'auth/user-not-found':
-          errorMessage = "No se encontró un usuario con este correo.";
-          break;
-        case 'auth/network-request-failed':
-          errorMessage = "Error de conexión, por favor intenta más tarde.";
-          break;
-        case 'auth/invalid-api-key':
-          errorMessage = "La clave API de Firebase no es válida. Revisa el archivo .env.";
-          break;
-      }
-      Alert.alert("Error", `${errorMessage}\n\nCódigo: ${error.code ?? 'desconocido'}`);
+      setFormError(getAuthErrorMessage(error.code));
+      setLoading(false);
     }
   };
+  
 
   return (
     <View style={styles.container}>
