@@ -77,6 +77,9 @@ export default function Login({ navigation }) {
 
   const busy = loading || resetting;
 
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
