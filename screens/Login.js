@@ -27,11 +27,11 @@ const COLORS = {
   placeholder: '#8A97A4',
   border: '#D5DEE6',
   primary: '#8C63D6',
-  // primaryDark: '#2E6B1F',
   primaryDark: '#754FC2',
   danger: '#C0392B',
   dangerBg: '#FDECEA',
-  successBg: '#E8F5E1',
+  // successBg: '#EFE8FA',
+  successBg: '#E9E0F8'
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
