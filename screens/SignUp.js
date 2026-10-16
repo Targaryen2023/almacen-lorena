@@ -5,7 +5,8 @@
 //          con borde rojo (error) / verde (correcto) y mensaje debajo.
 // TAREA 3: requisitos de la contraseña que se pintan de verde mientras se escribe,
 //          y aviso en vivo de si la confirmación coincide o no.
-// Pendiente: botón (tarea 4), Firebase (tarea 5).
+// TAREA 4: botón "Registrarse" deshabilitado hasta que todos los campos sean válidos.
+// Pendiente: Firebase (tarea 5).
 
 import React, { useState } from 'react';
 import {
@@ -169,17 +170,15 @@ export default function SignUp({ navigation }) {
     ? errores.confirmacion ? 'error' : 'ok'
     : estadoDe('confirmacion'); // vacía: solo marca error si ya saliste del campo
 
-  // Lógica de la guía, sin cambios: se reemplaza en la tarea 5.
-  // Se deja para que el registro siga funcionando mientras se avanza.
+  // TAREA 4: el formulario es válido solo si NINGÚN campo tiene error.
+  // Object.values(errores) → ['', '', 'Este campo es obligatorio', ...]
+  // .every(...)            → true únicamente si todos son '' (sin error)
+  const formularioValido = Object.values(errores).every((error) => error === '');
+
+  // Lógica de Firebase de la guía: se reemplaza en la tarea 5.
   const handleSignUp = async () => {
-    if (!nombre.trim() || !apellido.trim() || !correo.trim() || !contrasena || !confirmacion) {
-      Alert.alert('Error', 'Todos los campos son obligatorios.');
-      return;
-    }
-    if (contrasena !== confirmacion) {
-      Alert.alert('Error', 'Las contraseñas no coinciden.');
-      return;
-    }
+    // Doble seguro: aunque el botón esté deshabilitado, no se envía nada inválido.
+    if (!formularioValido) return;
     try {
       const credencial = await createUserWithEmailAndPassword(auth, correo.trim(), contrasena);
       await updateProfile(credencial.user, { displayName: `${nombre.trim()} ${apellido.trim()}` });
@@ -301,9 +300,18 @@ export default function SignUp({ navigation }) {
             )}
           </Campo>
 
-          <TouchableOpacity style={styles.boton} onPress={handleSignUp}>
+          {/* Botón: deshabilitado (atenuado y sin acción) hasta que todo sea válido */}
+          <TouchableOpacity
+            style={[styles.boton, !formularioValido && styles.botonDeshabilitado]}
+            onPress={handleSignUp}
+            disabled={!formularioValido}
+            accessibilityState={{ disabled: !formularioValido }} // lo anuncia el lector de pantalla
+          >
             <Text style={styles.textoBoton}>Registrarse</Text>
           </TouchableOpacity>
+          {!formularioValido && (
+            <Text style={styles.ayudaBoton}>Completá todos los campos para continuar</Text>
+          )}
 
           {/* Pie: pregunta y enlace en la misma línea */}
           <View style={styles.pie}>
@@ -378,6 +386,8 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   textoBoton: { color: COLORES.blanco, fontSize: 18, fontWeight: '700' },
+  botonDeshabilitado: { opacity: 0.45 }, // mismo verde, atenuado
+  ayudaBoton: { fontSize: 13, color: COLORES.textoSuave, textAlign: 'center', marginTop: 8 },
 
   // Pie
   pie: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 28 },
