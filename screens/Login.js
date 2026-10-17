@@ -222,11 +222,71 @@ export default function Login({ navigation }) {
     }
   };
 
+  // ----- Recuperación de contraseña (modal) -----
+  const openForgot = () => {
+    if (busy) return;
+    clearMessages();
+    setResetEmail(email.trim()); // reutiliza el correo que ya escribió en el login
+    setResetError('');
+    setSentNotice(false);
+    setForgotVisible(true);
+  };
+
+  const closeForgot = () => {
+    if (resetLoading) return;
+    if (resetEmail.trim()) setEmail(resetEmail.trim());
+    setForgotVisible(false);
+  };
+
+  // Cierra el modal y muestra el aviso flotante (no ocupa toda la pantalla).
+  const onResetSuccess = (sentTo) => {
+    setEmail(sentTo);
+    setForgotVisible(false);
+    setSentNotice(true);
+  };
+
+  const handleSendReset = async () => {
+    if (resetLoading) return;
+
+    const trimmed = resetEmail.trim();
+    if (!trimmed) {
+      setResetError('Ingresá tu correo electrónico.');
+      return;
+    }
+    if (!EMAIL_REGEX.test(trimmed)) {
+      setResetError('El formato del correo no es válido.');
+      return;
+    }
+
+    setResetError('');
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, trimmed);
+      onResetSuccess(trimmed);
+    } catch (error) {
+      console.error('Error al recuperar contraseña:', error.code, error.message);
+      if (error.code === 'auth/user-not-found') {
+        // Por seguridad no revelamos si el correo existe o no: se muestra el mismo aviso de éxito.
+        onResetSuccess(trimmed);
+      } else {
+        setResetError(getResetErrorMessage(error.code));
+      }
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+
   const inputBorder = (field) => {
     if (errors[field]) return COLORS.danger;
     if (focusedField === field) return COLORS.primary;
     return COLORS.border;
   };
+    const resetBorder = resetError
+      ? COLORS.danger
+      : resetFocused
+        ? COLORS.primary
+        : COLORS.border;
 
    return (
     <KeyboardAvoidingView
