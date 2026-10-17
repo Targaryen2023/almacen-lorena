@@ -20,7 +20,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../src/config/firebaseConfig';
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 
 const LIGHT_COLORS = {
@@ -65,7 +64,6 @@ const LOGO_DARK = require('../assets/logo-dark.png');
 const getAuthErrorMessage = (code) => {
   switch (code) {
     case 'auth/invalid-email':
-    case 'auth/missing-email':
       return 'El formato del correo electrónico no es válido.';
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
@@ -81,6 +79,21 @@ const getAuthErrorMessage = (code) => {
       return 'La clave API de Firebase no es válida. Revisá la configuración.';
     default:
       return 'No pudimos iniciar sesión. Intentá de nuevo.';
+  }
+};
+
+// Errores propios de la recuperación de contraseña.
+const getResetErrorMessage = (code) => {
+  switch (code) {
+    case 'auth/invalid-email':
+    case 'auth/missing-email':
+      return 'El formato del correo electrónico no es válido.';
+    case 'auth/too-many-requests':
+      return 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.';
+    case 'auth/network-request-failed':
+      return 'Sin conexión. Revisá tu internet e intentá de nuevo.';
+    default:
+      return 'No pudimos enviar el correo. Intentá de nuevo.';
   }
 };
 
@@ -199,7 +212,7 @@ export default function Login({ navigation }) {
   
   
 
-  
+
   // ----- Recuperación de contraseña (modal) -----
   const openForgot = () => {
     if (busy) return;
