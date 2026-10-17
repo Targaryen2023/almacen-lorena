@@ -144,7 +144,6 @@ export default function Login({ navigation }) {
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resetting, setResetting] = useState(false);
 
 
   const [legalDoc, setLegalDoc] = useState(null); // null | 'terms' | 'privacy'
@@ -161,7 +160,7 @@ export default function Login({ navigation }) {
   const COLORS = isDark ? DARK_COLORS : LIGHT_COLORS;
   const styles = useMemo(() => createStyles(COLORS), [isDark]);
 
-  const busy = loading || resetting;
+  const busy = loading;
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -198,30 +197,9 @@ export default function Login({ navigation }) {
     }
   };
   
-  const handleForgotPassword = async () => {
-    if (busy) return;
-    clearMessages();
+  
 
-    const trimmed = email.trim();
-    if (!trimmed || !EMAIL_REGEX.test(trimmed)) {
-      setErrors({ email: 'Escribí tu correo para enviarte el enlace de recuperación.' });
-      emailRef.current?.focus();
-      return;
-    }
-
-    setErrors({});
-    setResetting(true);
-    try {
-      await sendPasswordResetEmail(auth, trimmed);
-      setNotice('Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.');
-    } catch (error) {
-      console.error('Error al recuperar contraseña:', error.code, error.message);
-      setFormError(getAuthErrorMessage(error.code));
-    } finally {
-      setResetting(false);
-    }
-  };
-
+  
   // ----- Recuperación de contraseña (modal) -----
   const openForgot = () => {
     if (busy) return;
@@ -415,17 +393,16 @@ export default function Login({ navigation }) {
 
 
           <TouchableOpacity
-            onPress={handleForgotPassword}
+            onPress={openForgot}
             disabled={busy}
             style={styles.forgotButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
+            accessibilityLabel="Recuperar contraseña"
           >
-            {resetting ? (
-              <ActivityIndicator size="small" color={COLORS.primaryDark} />
-            ) : (
-              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-            )}
+            <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
           </TouchableOpacity>
+
 
           <TouchableOpacity
             style={[styles.button, busy && styles.buttonDisabled]}
@@ -472,14 +449,142 @@ export default function Login({ navigation }) {
                 >
                   Política de privacidad
                 </Text>
-                
               </Text>
             </View>
-
-
         </View>
       </ScrollView>
-            <Modal
+    
+
+          {/* Aviso flotante: se cierra con la X */}
+      {sentNotice && (
+        <View
+          style={[styles.toast, { top: insets.top + 10 }]}
+          accessibilityLiveRegion="polite"
+        >
+          <View style={styles.toastIcon}>
+            <Feather name="check" size={18} color="#fff" />
+          </View>
+          <View style={styles.toastBody}>
+            <Text style={styles.toastTitle}>Enlace enviado</Text>
+            <Text style={styles.toastMessage}>
+              Revisá tu correo (y la carpeta de spam) para restablecer tu contraseña.
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setSentNotice(false)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar aviso"
+          >
+            <Feather name="x" size={18} color={COLORS.muted} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Modal: recuperar contraseña */}
+      <Modal
+        visible={forgotVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={closeForgot}
+        onShow={() => resetEmailRef.current?.focus()}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={closeForgot}
+            accessibilityLabel="Cerrar"
+          />
+          <View style={[styles.modalCard, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.modalHandle} />
+
+            <TouchableOpacity
+              style={styles.modalClose}
+              onPress={closeForgot}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+            >
+              <Feather name="x" size={22} color={COLORS.muted} />
+            </TouchableOpacity>
+
+            <View style={styles.resetIconCircle}>
+              <Feather name="lock" size={28} color={COLORS.primaryDark} />
+            </View>
+            <Text style={styles.resetTitle} accessibilityRole="header">
+              Recuperar contraseña
+            </Text>
+            <Text style={styles.resetText}>
+              Ingresá el correo de tu cuenta y te enviaremos un enlace para crear una
+              contraseña nueva.
+            </Text>
+
+            <Text style={styles.label}>Correo electrónico</Text>
+            <View style={[styles.inputContainer, { borderColor: resetBorder }]}>
+              <Feather name="mail" size={20} color={COLORS.muted} style={styles.icon} />
+              <TextInput
+                ref={resetEmailRef}
+                style={styles.input}
+                placeholder="nombre@correo.com"
+                placeholderTextColor={COLORS.placeholder}
+                value={resetEmail}
+                onChangeText={(text) => {
+                  setResetEmail(text);
+                  if (resetError) setResetError('');
+                }}
+                onFocus={() => setResetFocused(true)}
+                onBlur={() => setResetFocused(false)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
+                returnKeyType="send"
+                onSubmitEditing={handleSendReset}
+                editable={!resetLoading}
+                accessibilityLabel="Correo electrónico para recuperar la contraseña"
+              />
+            </View>
+            {!!resetError && (
+              <Text style={styles.fieldError} accessibilityLiveRegion="polite">
+                {resetError}
+              </Text>
+            )}
+
+            <TouchableOpacity
+              style={[styles.button, styles.resetPrimary, resetLoading && styles.buttonDisabled]}
+              onPress={handleSendReset}
+              disabled={resetLoading}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Enviar enlace de recuperación"
+            >
+              {resetLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Enviar enlace</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={closeForgot}
+              disabled={resetLoading}
+              style={styles.cancelButton}
+              accessibilityRole="button"
+            >
+              <Text style={styles.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+
+
+
+      <Modal
         visible={!!legalDoc}
         animationType="slide"
         transparent
@@ -749,7 +854,7 @@ const createStyles = (COLORS) => StyleSheet.create({
     marginTop: 4,
   },
 
-  
+
   // Ventana de recuperar contraseña
   modalHandle: {
     alignSelf: 'center',
