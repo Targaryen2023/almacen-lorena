@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../src/config/firebaseConfig';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+
 
 const LIGHT_COLORS = {
   headerBg: '#D9EBF8',
@@ -62,6 +65,7 @@ const LOGO_DARK = require('../assets/logo-dark.png');
 const getAuthErrorMessage = (code) => {
   switch (code) {
     case 'auth/invalid-email':
+    case 'auth/missing-email':
       return 'El formato del correo electrónico no es válido.';
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
