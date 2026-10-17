@@ -133,6 +133,7 @@ const LEGAL_DOCS = {
 export default function Login({ navigation }) {
   const insets = useSafeAreaInsets();
   const emailRef = useRef(null);
+  const resetEmailRef = useRef(null);
   const passwordRef = useRef(null);
 
   const [email, setEmail] = useState('');
@@ -144,7 +145,16 @@ export default function Login({ navigation }) {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+
+
   const [legalDoc, setLegalDoc] = useState(null); // null | 'terms' | 'privacy'
+  // Modal "¿Olvidaste tu contraseña?"
+  const [forgotVisible, setForgotVisible] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetFocused, setResetFocused] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [sentNotice, setSentNotice] = useState(false); // aviso flotante "enlace enviado"
 
   const systemScheme = useColorScheme();
   const [isDark, setIsDark] = useState(systemScheme === 'dark');
