@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../src/config/firebaseConfig';
+
 
 const LIGHT_COLORS = {
   headerBg: '#D9EBF8',
@@ -80,6 +82,21 @@ const getAuthErrorMessage = (code) => {
   }
 };
 
+// Errores propios de la recuperación de contraseña.
+const getResetErrorMessage = (code) => {
+  switch (code) {
+    case 'auth/invalid-email':
+    case 'auth/missing-email':
+      return 'El formato del correo electrónico no es válido.';
+    case 'auth/too-many-requests':
+      return 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.';
+    case 'auth/network-request-failed':
+      return 'Sin conexión. Revisá tu internet e intentá de nuevo.';
+    default:
+      return 'No pudimos enviar el correo. Intentá de nuevo.';
+  }
+};
+
 // Texto de ejemplo con fines académicos: revisar y ajustar con el equipo antes de la entrega.
 const LEGAL_DOCS = {
   terms: {
@@ -129,6 +146,7 @@ const LEGAL_DOCS = {
 export default function Login({ navigation }) {
   const insets = useSafeAreaInsets();
   const emailRef = useRef(null);
+  const resetEmailRef = useRef(null);
   const passwordRef = useRef(null);
 
   const [email, setEmail] = useState('');
@@ -139,15 +157,23 @@ export default function Login({ navigation }) {
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resetting, setResetting] = useState(false);
+
+
   const [legalDoc, setLegalDoc] = useState(null); // null | 'terms' | 'privacy'
+  // Modal "¿Olvidaste tu contraseña?"
+  const [forgotVisible, setForgotVisible] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetFocused, setResetFocused] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [sentNotice, setSentNotice] = useState(false); // aviso flotante "enlace enviado"
 
   const systemScheme = useColorScheme();
   const [isDark, setIsDark] = useState(systemScheme === 'dark');
   const COLORS = isDark ? DARK_COLORS : LIGHT_COLORS;
   const styles = useMemo(() => createStyles(COLORS), [isDark]);
 
-  const busy = loading || resetting;
+  const busy = loading;
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -184,35 +210,74 @@ export default function Login({ navigation }) {
     }
   };
   
-  const handleForgotPassword = async () => {
+  
+
+
+  // ----- Recuperación de contraseña (modal) -----
+  const openForgot = () => {
     if (busy) return;
     clearMessages();
+    setResetEmail(email.trim()); // reutiliza el correo que ya escribió en el login
+    setResetError('');
+    setSentNotice(false);
+    setForgotVisible(true);
+  };
 
-    const trimmed = email.trim();
-    if (!trimmed || !EMAIL_REGEX.test(trimmed)) {
-      setErrors({ email: 'Escribí tu correo para enviarte el enlace de recuperación.' });
-      emailRef.current?.focus();
+  const closeForgot = () => {
+    if (resetLoading) return;
+    if (resetEmail.trim()) setEmail(resetEmail.trim());
+    setForgotVisible(false);
+  };
+
+  // Cierra el modal y muestra el aviso flotante (no ocupa toda la pantalla).
+  const onResetSuccess = (sentTo) => {
+    setEmail(sentTo);
+    setForgotVisible(false);
+    setSentNotice(true);
+  };
+
+  const handleSendReset = async () => {
+    if (resetLoading) return;
+
+    const trimmed = resetEmail.trim();
+    if (!trimmed) {
+      setResetError('Ingresá tu correo electrónico.');
+      return;
+    }
+    if (!EMAIL_REGEX.test(trimmed)) {
+      setResetError('El formato del correo no es válido.');
       return;
     }
 
-    setErrors({});
-    setResetting(true);
+    setResetError('');
+    setResetLoading(true);
     try {
       await sendPasswordResetEmail(auth, trimmed);
-      setNotice('Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.');
+      onResetSuccess(trimmed);
     } catch (error) {
       console.error('Error al recuperar contraseña:', error.code, error.message);
-      setFormError(getAuthErrorMessage(error.code));
+      if (error.code === 'auth/user-not-found') {
+        // Por seguridad no revelamos si el correo existe o no: se muestra el mismo aviso de éxito.
+        onResetSuccess(trimmed);
+      } else {
+        setResetError(getResetErrorMessage(error.code));
+      }
     } finally {
-      setResetting(false);
+      setResetLoading(false);
     }
   };
+
 
   const inputBorder = (field) => {
     if (errors[field]) return COLORS.danger;
     if (focusedField === field) return COLORS.primary;
     return COLORS.border;
   };
+    const resetBorder = resetError
+      ? COLORS.danger
+      : resetFocused
+        ? COLORS.primary
+        : COLORS.border;
 
    return (
     <KeyboardAvoidingView
@@ -341,17 +406,16 @@ export default function Login({ navigation }) {
 
 
           <TouchableOpacity
-            onPress={handleForgotPassword}
+            onPress={openForgot}
             disabled={busy}
             style={styles.forgotButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
+            accessibilityLabel="Recuperar contraseña"
           >
-            {resetting ? (
-              <ActivityIndicator size="small" color={COLORS.primaryDark} />
-            ) : (
-              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-            )}
+            <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
           </TouchableOpacity>
+
 
           <TouchableOpacity
             style={[styles.button, busy && styles.buttonDisabled]}
@@ -398,14 +462,142 @@ export default function Login({ navigation }) {
                 >
                   Política de privacidad
                 </Text>
-                
               </Text>
             </View>
-
-
         </View>
       </ScrollView>
-            <Modal
+    
+
+          {/* Aviso flotante: se cierra con la X */}
+      {sentNotice && (
+        <View
+          style={[styles.toast, { top: insets.top + 10 }]}
+          accessibilityLiveRegion="polite"
+        >
+          <View style={styles.toastIcon}>
+            <Feather name="check" size={18} color="#fff" />
+          </View>
+          <View style={styles.toastBody}>
+            <Text style={styles.toastTitle}>Enlace enviado</Text>
+            <Text style={styles.toastMessage}>
+              Revisá tu correo (y la carpeta de spam) para restablecer tu contraseña.
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setSentNotice(false)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar aviso"
+          >
+            <Feather name="x" size={18} color={COLORS.muted} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Modal: recuperar contraseña */}
+      <Modal
+        visible={forgotVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={closeForgot}
+        onShow={() => resetEmailRef.current?.focus()}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={closeForgot}
+            accessibilityLabel="Cerrar"
+          />
+          <View style={[styles.modalCard, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.modalHandle} />
+
+            <TouchableOpacity
+              style={styles.modalClose}
+              onPress={closeForgot}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+            >
+              <Feather name="x" size={22} color={COLORS.muted} />
+            </TouchableOpacity>
+
+            <View style={styles.resetIconCircle}>
+              <Feather name="lock" size={28} color={COLORS.primaryDark} />
+            </View>
+            <Text style={styles.resetTitle} accessibilityRole="header">
+              Recuperar contraseña
+            </Text>
+            <Text style={styles.resetText}>
+              Ingresá el correo de tu cuenta y te enviaremos un enlace para crear una
+              contraseña nueva.
+            </Text>
+
+            <Text style={styles.label}>Correo electrónico</Text>
+            <View style={[styles.inputContainer, { borderColor: resetBorder }]}>
+              <Feather name="mail" size={20} color={COLORS.muted} style={styles.icon} />
+              <TextInput
+                ref={resetEmailRef}
+                style={styles.input}
+                placeholder="nombre@correo.com"
+                placeholderTextColor={COLORS.placeholder}
+                value={resetEmail}
+                onChangeText={(text) => {
+                  setResetEmail(text);
+                  if (resetError) setResetError('');
+                }}
+                onFocus={() => setResetFocused(true)}
+                onBlur={() => setResetFocused(false)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
+                returnKeyType="send"
+                onSubmitEditing={handleSendReset}
+                editable={!resetLoading}
+                accessibilityLabel="Correo electrónico para recuperar la contraseña"
+              />
+            </View>
+            {!!resetError && (
+              <Text style={styles.fieldError} accessibilityLiveRegion="polite">
+                {resetError}
+              </Text>
+            )}
+
+            <TouchableOpacity
+              style={[styles.button, styles.resetPrimary, resetLoading && styles.buttonDisabled]}
+              onPress={handleSendReset}
+              disabled={resetLoading}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Enviar enlace de recuperación"
+            >
+              {resetLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Enviar enlace</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={closeForgot}
+              disabled={resetLoading}
+              style={styles.cancelButton}
+              accessibilityRole="button"
+            >
+              <Text style={styles.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+
+
+
+      <Modal
         visible={!!legalDoc}
         animationType="slide"
         transparent
@@ -456,21 +648,6 @@ const createStyles = (COLORS) => StyleSheet.create({
     paddingHorizontal: 24,
   },
   logoWrapper: {
-    // width: 104,
-    // height: 104,
-    // borderRadius: 52,
-    // backgroundColor: '#fff',
-    // alignItems: 'center',
-    // justifyContent: 'center',
-    // overflow: 'hidden',
-    // marginBottom: 16,
-    // borderWidth: 3,
-    // borderColor: '#fff',
-    // elevation: 4,
-    // shadowColor: '#000',
-    // shadowOpacity: 0.12,
-    // shadowRadius: 8,
-    // shadowOffset: { width: 0, height: 3 },
     width: 124,
     height: 124,
     borderRadius: 62,
@@ -536,13 +713,6 @@ const createStyles = (COLORS) => StyleSheet.create({
     marginTop: 18,
   },
   inputContainer: {
-    // flexDirection: 'row',
-    // alignItems: 'center',
-    // backgroundColor: COLORS.card,
-    // borderWidth: 1.5,
-    // borderRadius: 12,
-    // paddingHorizontal: 14,
-    // height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.card,
@@ -555,10 +725,6 @@ const createStyles = (COLORS) => StyleSheet.create({
     marginRight: 10,
   },
   input: {
-    // flex: 1,
-    // fontSize: 16,
-    // color: COLORS.text,
-    // height: '100%',
     flex: 1,
     fontSize: 17,
     color: COLORS.text,
@@ -589,10 +755,6 @@ const createStyles = (COLORS) => StyleSheet.create({
     backgroundColor: COLORS.successBg,
   },
   bannerText: {
-    // flex: 1,
-    // marginLeft: 8,
-    // fontSize: 13,
-    // fontWeight: '600',
     flex: 1,
     marginLeft: 8,
     fontSize: 14,
@@ -608,24 +770,11 @@ const createStyles = (COLORS) => StyleSheet.create({
     justifyContent: 'center',
   },
   forgotText: {
-    // fontSize: 14,
-    // fontWeight: '700',
-    // color: COLORS.primaryDark,
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },
   button: {
-    // backgroundColor: COLORS.primary,
-    // height: 52,
-    // borderRadius: 12,
-    // alignItems: 'center',
-    // justifyContent: 'center',
-    // elevation: 2,
-    // shadowColor: COLORS.primaryDark,
-    // shadowOpacity: 0.25,
-    // shadowRadius: 6,
-    // shadowOffset: { width: 0, height: 3 },
     backgroundColor: COLORS.primary,
     height: 56,
     borderRadius: 12,
@@ -641,9 +790,6 @@ const createStyles = (COLORS) => StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    // color: '#fff',
-    // fontSize: 16,
-    // fontWeight: '700',
     color: '#fff',
     fontSize: 17,
     fontWeight: '700',
@@ -655,15 +801,10 @@ const createStyles = (COLORS) => StyleSheet.create({
     marginTop: 24,
   },
   footerText: {
-    // fontSize: 14,
-    // color: COLORS.muted,
     fontSize: 15,
     color: COLORS.muted,
   },
   footerLink: {
-    // fontSize: 14,
-    // fontWeight: '700',
-    // color: COLORS.primaryDark,
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.primaryDark,
@@ -724,5 +865,107 @@ const createStyles = (COLORS) => StyleSheet.create({
     lineHeight: 22,
     color: COLORS.muted,
     marginTop: 4,
+  },
+
+
+  // Ventana de recuperar contraseña
+  modalHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.border,
+    marginTop: -12,
+    marginBottom: 16,
+  },
+  modalClose: {
+    position: 'absolute',
+    top: 16,
+    right: 20,
+    zIndex: 1,
+  },
+  resetIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.successBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  resetTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  resetText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: COLORS.muted,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  resetPrimary: {
+    alignSelf: 'stretch',
+    marginTop: 20,
+  },
+  cancelButton: {
+    alignSelf: 'center',
+    marginTop: 14,
+    minHeight: 24,
+    justifyContent: 'center',
+  },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+  },
+
+  // Aviso flotante
+  toast: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  toastIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  toastBody: {
+    flex: 1,
+    marginRight: 10,
+  },
+  toastTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  toastMessage: {
+    marginTop: 2,
+    fontSize: 13,
+    lineHeight: 18,
+    color: COLORS.muted,
   },
 });
