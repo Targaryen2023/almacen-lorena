@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -11,7 +11,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native';
 
@@ -20,43 +19,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../src/config/firebaseConfig';
+import {COLORES, FUENTES, MEDIDAS, estilosComunes} from '../src/estilos';
 
-
-const LIGHT_COLORS = {
-  headerBg: '#D9EBF8',
-  screenBg: '#F0F6FA',
-  card: '#FFFFFF',
-  text: '#1B1F23',
-  muted: '#5B6B7A',
-  placeholder: '#8A97A4',
-  border: '#D5DEE6',
-  primary: '#754FC2',
-  primaryDark: '#8C63D6',
-  danger: '#C0392B',
-  dangerBg: '#FDECEA',
-  successBg: '#E9E0F8',
-  logoBg: '#FFFFFF',
-};
-
-const DARK_COLORS = {
-  headerBg: '#221F2B',
-  screenBg: '#14121A',
-  card: '#26232F',
-  text: '#F2EFF7',
-  muted: '#A9A3B8',
-  placeholder: '#7C768C',
-  border: '#3A3646',
-  primary: '#8C63D6',
-  primaryDark: '#B79BEA',
-  danger: '#FF8A8A',
-  dangerBg: '#3A1F26',
-  successBg: '#2E2545',
-  logoBg: '#0F0E14',
-};
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const LOGO_LIGHT = require('../assets/logo.png');
-const LOGO_DARK = require('../assets/logo-dark.png');
+const LOGO = require('../assets/logo.png');
+// const LOGO_LIGHT = require('../assets/logo.png');
+// const LOGO_DARK = require('../assets/logo-dark.png');
 
 
 // Traduce el código de error de Firebase a un mensaje claro para el usuario.
@@ -168,10 +137,10 @@ export default function Login({ navigation }) {
   const [resetLoading, setResetLoading] = useState(false);
   const [sentNotice, setSentNotice] = useState(false); // aviso flotante "enlace enviado"
 
-  const systemScheme = useColorScheme();
-  const [isDark, setIsDark] = useState(systemScheme === 'dark');
-  const COLORS = isDark ? DARK_COLORS : LIGHT_COLORS;
-  const styles = useMemo(() => createStyles(COLORS), [isDark]);
+  // const systemScheme = useColorScheme();
+  // const [isDark, setIsDark] = useState(systemScheme === 'dark');
+  // const COLORS = isDark ? DARK_COLORS : LIGHT_COLORS;
+  // const styles = useMemo(() => createStyles(COLORS), [isDark]);
 
   const busy = loading;
 
@@ -211,7 +180,6 @@ export default function Login({ navigation }) {
   };
   
   
-
 
   // ----- Recuperación de contraseña (modal) -----
   const openForgot = () => {
@@ -268,20 +236,21 @@ export default function Login({ navigation }) {
   };
 
 
+  // Color del borde de cada campo: rojo si hay error, violeta si está enfocado, gris si no.
   const inputBorder = (field) => {
-    if (errors[field]) return COLORS.danger;
-    if (focusedField === field) return COLORS.primary;
-    return COLORS.border;
+    if (errors[field]) return COLORES.rojo;
+    if (focusedField === field) return COLORES.violeta;
+    return COLORES.gris;
   };
     const resetBorder = resetError
-      ? COLORS.danger
+      ? COLORES.rojo
       : resetFocused
-        ? COLORS.primary
-        : COLORS.border;
+        ? COLORES.violeta
+        : COLORES.gris;
 
    return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={estilosComunes.pantalla}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar style="dark" />
@@ -291,61 +260,47 @@ export default function Login({ navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Cabecera */}
-        <View style={[styles.header, { paddingTop: insets.top + 28 }]}>
+        {/* Cabecera franja celeste con logo, título y subtítulo */}
+        <View style={[estilosComunes.franja,styles.franja,{ paddingTop: insets.top + 28 }]}>
 
-          <View style={[styles.header, { paddingTop: insets.top + 28 }]}>
-            <TouchableOpacity
-              style={[styles.themeToggle, { top: insets.top + 12 }]}
-              onPress={() => setIsDark((prev) => !prev)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: isDark }}
-              accessibilityLabel="Modo oscuro"
-            >
-              <Feather name={isDark ? 'sun' : 'moon'} size={20} color={COLORS.primaryDark} />
-            </TouchableOpacity>
-
-          </View>
           <View style={styles.logoWrapper}>
             <Image
-            
-             source={isDark ? LOGO_DARK : LOGO_LIGHT}
-             style={[styles.logo, isDark && styles.logoDark]}
-             resizeMode="cover"
-             accessibilityLabel="Logo del negocio"
-
+              source={LOGO}
+              style={styles.logo}
+              resizeMode="cover"
+              accessibilityLabel="Logo del negocio"
             />
           </View>
-          <Text style={styles.title} accessibilityRole="header">
+
+          <Text style={estilosComunes.titulo} accessibilityRole="header">
             Iniciá sesión
           </Text>
-          <Text style={styles.subtitle}>Ingresá para gestionar tu inventario</Text>
+          <Text style={[estilosComunes.subtitulo, styles.subtitulo]}>Ingresá para gestionar tu inventario</Text>
         </View>
 
-        {/* Formulario (los campos de acá se reemplazan en los pasos 10 y 11) */}
+        {/* Formulario  */}
         <View style={styles.form}>
               {!!formError && (
             <View style={[styles.banner, styles.bannerError]} accessibilityLiveRegion="polite">
-              <Feather name="alert-circle" size={18} color={COLORS.danger} />
-              <Text style={[styles.bannerText, { color: COLORS.danger }]}>{formError}</Text>
+              <Feather name="alert-circle" size={18} color={COLORES.rojo} />
+              <Text style={[styles.bannerText, { color: COLORES.rojo }]}>{formError}</Text>
             </View>
           )}
           {!!notice && (
             <View style={[styles.banner, styles.bannerSuccess]} accessibilityLiveRegion="polite">
-              <Feather name="check-circle" size={18} color={COLORS.primaryDark} />
-              <Text style={[styles.bannerText, { color: COLORS.primaryDark }]}>{notice}</Text>
+              <Feather name="check-circle" size={18} color={COLORES.verde} />
+              <Text style={[styles.bannerText, { color: COLORES.verde }]}>{notice}</Text>
             </View>
           )}
 
-          <Text style={styles.label}>Correo electrónico</Text>
-          <View style={[styles.inputContainer, { borderColor: inputBorder('email') }]}>
-            <Feather name="mail" size={20} color={COLORS.muted} style={styles.icon} />
+          <Text style={[estilosComunes.etiqueta, styles.etiqueta]}>Correo electrónico</Text>
+          <View style={[estilosComunes.caja, { borderColor: inputBorder('email') }]}>
+            <Feather name="mail" size={20} color={COLORES.violeta} style={styles.icon} />
             <TextInput
               ref={emailRef}
-              style={styles.input}
+              style={estilosComunes.input}
               placeholder="nombre@correo.com"
-              placeholderTextColor={COLORS.placeholder}
+              placeholderTextColor={COLORES.textoSuave}
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
@@ -367,14 +322,14 @@ export default function Login({ navigation }) {
           </View>
           {!!errors.email && <Text style={styles.fieldError}>{errors.email}</Text>}
 
-          <Text style={[styles.label, styles.labelSpaced]}>Contraseña</Text>
-          <View style={[styles.inputContainer, { borderColor: inputBorder('password') }]}>
-            <Feather name="lock" size={20} color={COLORS.muted} style={styles.icon} />
+          <Text style={[estilosComunes.etiqueta, styles.etiqueta, styles.etiquetaSeparada]}>Contraseña</Text>
+          <View style={[estilosComunes.caja, { borderColor: inputBorder('password') }]}>
+            <Feather name="lock" size={20} color={COLORES.violeta} style={styles.icon} />
             <TextInput
               ref={passwordRef}
-              style={styles.input}
+              style={estilosComunes.input}
               placeholder="Tu contraseña"
-              placeholderTextColor={COLORS.placeholder}
+              placeholderTextColor={COLORES.textoSuave}
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
@@ -399,7 +354,7 @@ export default function Login({ navigation }) {
               accessibilityRole="button"
               accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             >
-              <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color={COLORS.muted} />
+              <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color={COLORES.textoSuave} />
             </TouchableOpacity>
           </View>
           {!!errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
@@ -413,12 +368,12 @@ export default function Login({ navigation }) {
             accessibilityRole="button"
             accessibilityLabel="Recuperar contraseña"
           >
-            <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+            <Text style={estilosComunes.enlace}>¿Olvidaste tu contraseña?</Text>
           </TouchableOpacity>
 
 
           <TouchableOpacity
-            style={[styles.button, busy && styles.buttonDisabled]}
+            style={[estilosComunes.boton, busy && estilosComunes.botonDeshabilitado]}
             onPress={handleLogin}
             disabled={busy}
             activeOpacity={0.85}
@@ -426,9 +381,9 @@ export default function Login({ navigation }) {
             accessibilityLabel="Iniciar sesión"
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={COLORES.blanco} />
             ) : (
-              <Text style={styles.buttonText}>Iniciar sesión</Text>
+              <Text style={estilosComunes.textoBoton}>Iniciar sesión</Text>
             )}
           </TouchableOpacity>
 
@@ -440,7 +395,7 @@ export default function Login({ navigation }) {
               hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
               accessibilityRole="button"
             >
-              <Text style={styles.footerLink}>Crear cuenta</Text>
+              <Text style={estilosComunes.enlace}>Crear cuenta</Text>
             </TouchableOpacity>
           </View>
             <View style={styles.legalContainer}>
@@ -475,7 +430,7 @@ export default function Login({ navigation }) {
           accessibilityLiveRegion="polite"
         >
           <View style={styles.toastIcon}>
-            <Feather name="check" size={18} color="#fff" />
+            <Feather name="check" size={18} color={COLORES.blanco} />
           </View>
           <View style={styles.toastBody}>
             <Text style={styles.toastTitle}>Enlace enviado</Text>
@@ -489,7 +444,7 @@ export default function Login({ navigation }) {
             accessibilityRole="button"
             accessibilityLabel="Cerrar aviso"
           >
-            <Feather name="x" size={18} color={COLORS.muted} />
+            <Feather name="x" size={18} color={COLORES.textoSuave} />
           </TouchableOpacity>
         </View>
       )}
@@ -521,11 +476,11 @@ export default function Login({ navigation }) {
               accessibilityRole="button"
               accessibilityLabel="Cerrar"
             >
-              <Feather name="x" size={22} color={COLORS.muted} />
+              <Feather name="x" size={22} color={COLORES.textoSuave} />
             </TouchableOpacity>
 
             <View style={styles.resetIconCircle}>
-              <Feather name="lock" size={28} color={COLORS.primaryDark} />
+              <Feather name="lock" size={28} color={COLORES.violeta} />
             </View>
             <Text style={styles.resetTitle} accessibilityRole="header">
               Recuperar contraseña
@@ -535,14 +490,14 @@ export default function Login({ navigation }) {
               contraseña nueva.
             </Text>
 
-            <Text style={styles.label}>Correo electrónico</Text>
-            <View style={[styles.inputContainer, { borderColor: resetBorder }]}>
-              <Feather name="mail" size={20} color={COLORS.muted} style={styles.icon} />
+            <Text style={[estilosComunes.etiqueta,styles.etiqueta]}>Correo electrónico</Text>
+            <View style={[estilosComunes.caja, { borderColor: resetBorder }]}>
+              <Feather name="mail" size={20} color={COLORES.violeta} style={styles.icon} />
               <TextInput
                 ref={resetEmailRef}
-                style={styles.input}
+                style={estilosComunes.input}
                 placeholder="nombre@correo.com"
-                placeholderTextColor={COLORS.placeholder}
+                placeholderTextColor={COLORES.textoSuave}
                 value={resetEmail}
                 onChangeText={(text) => {
                   setResetEmail(text);
@@ -568,7 +523,9 @@ export default function Login({ navigation }) {
             )}
 
             <TouchableOpacity
-              style={[styles.button, styles.resetPrimary, resetLoading && styles.buttonDisabled]}
+              style={[
+                estilosComunes.boton, styles.resetPrimary, 
+                resetLoading && estilosComunes.botonDeshabilitado,]}
               onPress={handleSendReset}
               disabled={resetLoading}
               activeOpacity={0.85}
@@ -576,9 +533,9 @@ export default function Login({ navigation }) {
               accessibilityLabel="Enviar enlace de recuperación"
             >
               {resetLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={COLORES.blanco} />
               ) : (
-                <Text style={styles.buttonText}>Enviar enlace</Text>
+                <Text style={estilosComunes.textoBoton}>Enviar enlace</Text>
               )}
             </TouchableOpacity>
 
@@ -588,7 +545,7 @@ export default function Login({ navigation }) {
               style={styles.cancelButton}
               accessibilityRole="button"
             >
-              <Text style={styles.cancelText}>Cancelar</Text>
+              <Text style={estilosComunes.enlace}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -596,7 +553,7 @@ export default function Login({ navigation }) {
 
 
 
-
+      {/* Modal: terminos y privacidad*/}
       <Modal
         visible={!!legalDoc}
         animationType="slide"
@@ -616,12 +573,12 @@ export default function Login({ navigation }) {
                 ))}
             </ScrollView>
             <TouchableOpacity
-              style={[styles.button, { marginTop: 16 }]}
+              style={[estilosComunes.boton, { marginTop: 16 }]}
               onPress={() => setLegalDoc(null)}
               activeOpacity={0.85}
               accessibilityRole="button"
             >
-              <Text style={styles.buttonText}>Entendido</Text>
+              <Text style={estilosComunes.textoBoton}>Entendido</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -630,35 +587,24 @@ export default function Login({ navigation }) {
   );
 }
 
-
-const createStyles = (COLORS) => StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: COLORS.screenBg,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
+// Estilos propios de esta pantalla. Colores, fuentes, campos y botones
+// salen de src/estilos.js (estilosComunes, COLORES, FUENTES, MEDIDAS).
+const styles = StyleSheet.create({
+  flex: {flex: 1},
+  scrollContent: {flexGrow: 1},
 
   // Cabecera
-  header: {
-    backgroundColor: COLORS.headerBg,
-    alignItems: 'center',
-    paddingBottom: 28,
-    paddingHorizontal: 24,
-  },
+  franja: { alignItems: 'center', paddingBottom: 28 },
   logoWrapper: {
     width: 124,
     height: 124,
     borderRadius: 62,
-    // backgroundColor: '#fff',
-    backgroundColor: COLORS.logoBg,
+    backgroundColor: COLORES.blanco,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     marginBottom: 16,
     borderWidth: 0.5,
-    //borderColor: '#fff',
     elevation: 4,
     shadowColor: '#000',
     shadowOpacity: 0.12,
@@ -670,75 +616,28 @@ const createStyles = (COLORS) => StyleSheet.create({
     height: '100%',
     transform: [{ scale: 1.18 }],
   },
-  logoDark: {
-    transform: [{ scale: 1 }],
-  },
-  title: {
-    // fontSize: 26,
-    // fontWeight: '800',
-    // color: COLORS.text,
-    fontSize: 28,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  subtitle: {
-    // marginTop: 4,
-    // fontSize: 14,
-    // color: COLORS.muted,
-    // textAlign: 'center',
-    marginTop: 4,
-    fontSize: 15,
-    color: COLORS.muted,
-    textAlign: 'center',
-  },
+  subtitulo: { marginTop: 4, textAlign: 'center' },
 
+
+  
   // Formulario
   form: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: MEDIDAS.margen,
     paddingTop: 28,
     paddingBottom: 32,
   },
-  label: {
-    // fontSize: 14,
-    // fontWeight: '700',
-    // color: COLORS.text,
-    // marginBottom: 8,
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  labelSpaced: {
-    marginTop: 18,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 56,
-  },
-  icon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 17,
-    color: COLORS.text,
-    height: '100%',
-  },
-  fieldError: {
-    // marginTop: 6,
-    // fontSize: 13,
-    // color: COLORS.danger,
-    marginTop: 6,
-    fontSize: 14,
-    color: COLORS.danger,
-  },
 
+  etiqueta: { marginBottom: 6, marginLeft: 2 },
+  etiquetaSeparada: { marginTop: 18 },
+  icon: { marginRight: 12 },
+  fieldError: {
+    fontFamily: FUENTES.media,
+    fontSize: 13,
+    color: COLORES.rojo,
+    marginTop: 6,
+  },
+ 
   // Mensajes
   banner: {
     flexDirection: 'row',
@@ -748,19 +647,15 @@ const createStyles = (COLORS) => StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 18,
   },
-  bannerError: {
-    backgroundColor: COLORS.dangerBg,
-  },
-  bannerSuccess: {
-    backgroundColor: COLORS.successBg,
-  },
+  bannerError: { backgroundColor: COLORES.rojoSuave },
+  bannerSuccess: { backgroundColor: COLORES.verdeSuave },
   bannerText: {
     flex: 1,
     marginLeft: 8,
+    fontFamily: FUENTES.semi,
     fontSize: 14,
-    fontWeight: '600',
   },
-
+ 
   // Acciones
   forgotButton: {
     alignSelf: 'flex-start',
@@ -769,31 +664,6 @@ const createStyles = (COLORS) => StyleSheet.create({
     minHeight: 20,
     justifyContent: 'center',
   },
-  forgotText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
-  },
-  button: {
-    backgroundColor: COLORS.primary,
-    height: 56,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-    shadowColor: COLORS.primaryDark,
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -801,80 +671,71 @@ const createStyles = (COLORS) => StyleSheet.create({
     marginTop: 24,
   },
   footerText: {
+    fontFamily: FUENTES.regular,
     fontSize: 15,
-    color: COLORS.muted,
+    color: COLORES.textoSuave,
   },
-  footerLink: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
-  },
-    // Pie legal
+ 
+  // Pie legal
   legalContainer: {
     flexGrow: 1,
     justifyContent: 'flex-end',
     paddingTop: 32,
   },
-  legalDivider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginBottom: 16,
-  },
   legalText: {
+    fontFamily: FUENTES.regular,
     fontSize: 14,
     lineHeight: 20,
-    color: COLORS.muted,
+    color: COLORES.textoSuave,
     textAlign: 'center',
   },
   legalLink: {
-    fontWeight: '700',
-    color: COLORS.primaryDark,
+    fontFamily: FUENTES.negrita,
+    color: COLORES.violeta,
   },
-
-  // Ventana de términos
+ 
+  // Ventanas (modales)
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORES.blanco,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingHorizontal: 24,
+    paddingHorizontal: MEDIDAS.margen,
     paddingTop: 24,
     maxHeight: '80%',
   },
   modalTitle: {
+    fontFamily: FUENTES.extra,
     fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.text,
+    color: COLORES.titulo,
     marginBottom: 12,
   },
-  modalBody: {
-    flexGrow: 0,
-  },
+  modalBody: { flexGrow: 0 },
   modalHeading: {
+    fontFamily: FUENTES.negrita,
     fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
+    color: COLORES.negro,
     marginTop: 12,
   },
   modalText: {
+    fontFamily: FUENTES.regular,
     fontSize: 15,
     lineHeight: 22,
-    color: COLORS.muted,
+    color: COLORES.textoSuave,
     marginTop: 4,
   },
-
-
+ 
   // Ventana de recuperar contraseña
   modalHandle: {
     alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: COLORS.border,
+    backgroundColor: COLORES.gris,
     marginTop: -12,
     marginBottom: 16,
   },
@@ -888,42 +749,35 @@ const createStyles = (COLORS) => StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: COLORS.successBg,
+    backgroundColor: COLORES.violetaSuave,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
     marginBottom: 16,
   },
   resetTitle: {
+    fontFamily: FUENTES.extra,
     fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.text,
+    color: COLORES.titulo,
     textAlign: 'center',
     marginBottom: 8,
   },
   resetText: {
+    fontFamily: FUENTES.regular,
     fontSize: 15,
     lineHeight: 22,
-    color: COLORS.muted,
+    color: COLORES.textoSuave,
     textAlign: 'center',
     marginBottom: 20,
   },
-  resetPrimary: {
-    alignSelf: 'stretch',
-    marginTop: 20,
-  },
+  resetPrimary: { alignSelf: 'stretch', marginTop: 20 },
   cancelButton: {
     alignSelf: 'center',
     marginTop: 14,
     minHeight: 24,
     justifyContent: 'center',
   },
-  cancelText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
-  },
-
+ 
   // Aviso flotante
   toast: {
     position: 'absolute',
@@ -932,10 +786,10 @@ const createStyles = (COLORS) => StyleSheet.create({
     zIndex: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
+    backgroundColor: COLORES.blanco,
+    borderRadius: MEDIDAS.radioBoton,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORES.gris,
     paddingVertical: 12,
     paddingHorizontal: 14,
     elevation: 8,
@@ -948,24 +802,22 @@ const createStyles = (COLORS) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORES.verde,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  toastBody: {
-    flex: 1,
-    marginRight: 10,
-  },
+  toastBody: { flex: 1, marginRight: 10 },
   toastTitle: {
+    fontFamily: FUENTES.negrita,
     fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.text,
+    color: COLORES.negro,
   },
   toastMessage: {
-    marginTop: 2,
+    fontFamily: FUENTES.regular,
     fontSize: 13,
     lineHeight: 18,
-    color: COLORS.muted,
+    color: COLORES.textoSuave,
+    marginTop: 2,
   },
 });
