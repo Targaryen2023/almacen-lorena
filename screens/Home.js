@@ -3,24 +3,37 @@
 // TAREA 3: SOLO INTERFAZ. Los productos son de ejemplo (fijos en el código) y
 // los botones Ver / Editar / Eliminar / + y el buscador todavía no hacen nada.
 // "Cerrar sesión" pasó a la pestaña Perfil (tarea 4).
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import React {useState, useEffect} from 'react';
+
+
+import { 
+  View,
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  FlatList,
+  Image,
+  ActivityIndicator, 
+  StyleSheet,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { COLORES, FUENTES, MEDIDAS, estilosComunes } from '../src/estilos';
+import { escucharProductos } from '../src/services/productos';
+import { buscarImagenProducto } from '../src/services/imagenProducto';
 
-// Datos de ejemplo, iguales al Figma. Más adelante vendrán de la base de datos.
-const PRODUCTOS_EJEMPLO = [
-  { id: '1', nombre: 'Yerba mate 1 kg', categoria: 'Almacén', precio: 4800, stock: 24 },
-  { id: '2', nombre: 'Aceite de girasol 900 ml', categoria: 'Almacén', precio: 3200, stock: 5 },
-  { id: '3', nombre: 'Leche entera 1 L', categoria: 'Lácteos', precio: 1400, stock: 32 },
-];
+
 
 // Desde cuántas unidades se marca "Stock bajo"
 const STOCK_BAJO = 5;
 
 // 4800 → "$4.800" (punto de miles, como en Argentina)
 const formatearPrecio = (numero) => '$' + String(numero).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+const miniatura = (url) =>
+  url.includes('res.cloudinary.com')
+    ? url.replace('/upload/', '/upload/w_200,h_200,c_fill,q_auto,f_auto/')
+    : url;
 
 // ---------------------------------------------------------------------------
 // Botón chico de la tarjeta (ícono + texto). Sin función por ahora.
@@ -40,12 +53,41 @@ function Accion({ icono, texto, color }) {
 function TarjetaProducto({ producto }) {
   const stockBajo = producto.stock <= STOCK_BAJO;
 
+
+  // Foto: 1) imagen_url del producto (Cloudinary)  2) OpenFoodFacts por código de barras  3) ícono
+  const [fotoExterna, setFotoExterna] = useState('');
+
+  useEffect(() => {
+    if (producto.imagen_url || !producto.codigoBarras) return undefined;
+    let activo = true; // evita actualizar si la tarjeta ya no está en pantalla
+    buscarImagenProducto({ codigoBarras: producto.codigoBarras }).then((url) => {
+      if (activo) setFotoExterna(url);
+    });
+    return () => {
+      activo = false;
+    };
+  }, [producto.imagen_url, producto.codigoBarras]);
+ 
+  const imagenUrl = producto.imagen_url ? miniatura(producto.imagen_url) : fotoExterna;
+
+
+
   return (
     <View style={[estilosComunes.tarjeta, styles.tarjeta]}>
       {/* Parte de arriba: imagen + datos */}
       <View style={styles.filaDatos}>
         <View style={styles.imagen}>
-          <Feather name="package" size={28} color={COLORES.violeta} />
+          {
+            imagenUrl ? (
+              <Image 
+                source={{ uri: imagenUrl }} 
+                style={styles.imagen}
+                resizeMode="contain"
+                acceessibilityLabel={`Foto del producto ${producto.nombre}`}
+              />
+            ) : (
+              <Feather name="package" size={28} color={COLORES.violeta} />
+            )}
         </View>
 
         <View style={styles.datos}>
@@ -83,22 +125,47 @@ function TarjetaProducto({ producto }) {
 export default function Home() {
   const insets = useSafeAreaInsets();
 
-  // Resumen del encabezado, calculado a partir de los datos
-  const cantidadStockBajo = PRODUCTOS_EJEMPLO.filter((p) => p.stock <= STOCK_BAJO).length;
+  const [productos, setProductos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
 
+
+// Se conecta a Firestore al abrir la pantalla y se desconecta al salir.
+  useEffect(() => {
+    const dejarDeEscuchar = escucharProductos(
+      (lista) => {
+        setProductos(lista);
+        setError('');
+        setCargando(false);
+      },
+      (e) => {
+        console.warn('Error al leer productos:', e.code);
+        setError('No se pudieron cargar los productos. Revisá tu conexión.');
+        setCargando(false);
+      },
+    );
+    return dejarDeEscuchar;
+  }, []);
+ 
+  // Resumen del encabezado, calculado a partir de los datos
+  const cantidadStockBajo = productos.filter((p) => p.stock <= STOCK_BAJO).length;
+ 
+
+  
   return (
     <View style={estilosComunes.pantalla}>
       {/* Franja celeste con título y resumen */}
       <View style={[estilosComunes.franja, { paddingTop: insets.top + 24 }]}>
         <Text style={estilosComunes.titulo}>Productos</Text>
         <Text style={estilosComunes.subtitulo}>
-          {PRODUCTOS_EJEMPLO.length} productos · {cantidadStockBajo} con stock bajo
+          {productos.length} productos · {cantidadStockBajo} con stock bajo
         </Text>
-      </View>
+    </View>
+
 
       {/* FlatList: lista eficiente (solo dibuja lo que se ve en pantalla) */}
       <FlatList
-        data={PRODUCTOS_EJEMPLO}
+        data={productos}  
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <TarjetaProducto producto={item} />}
         contentContainerStyle={styles.lista}
@@ -118,6 +185,16 @@ export default function Home() {
               placeholderTextColor={COLORES.textoSuave}
             />
           </View>
+        }
+
+        ListEmptyComponent={
+          cargando ? (
+            <ActivityIndicator color={COLORES.violeta} style={styles.estado} />
+          ) : (
+            <Text style={[estilosComunes.subtitulo, styles.estado, error && styles.textoError]}>
+              {error || 'Todavía no hay productos cargados.'}
+            </Text>
+          )
         }
       />
 
@@ -139,6 +216,10 @@ export default function Home() {
 const styles = StyleSheet.create({
   lista: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 100 }, // abajo: lugar para el "+"
 
+  // Estados de la lista (cargando / vacío / error)
+  estado: { textAlign: 'center', marginTop: 40 },
+  textoError: { color: COLORES.rojo, fontFamily: FUENTES.media },
+
   // Buscador
   buscador: { borderRadius: 24, height: 48, marginBottom: 20 },
   iconoBuscar: { marginRight: 12 },
@@ -153,7 +234,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES.violetaSuave,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+
+  fotoProducto: { width: '100%', height: '100%' },
   datos: { flex: 1, marginLeft: 14, justifyContent: 'center' },
   nombre: { fontFamily: FUENTES.negrita, fontSize: 16, color: COLORES.titulo },
   categoria: { fontFamily: FUENTES.regular, fontSize: 13, color: COLORES.textoSuave, marginTop: 2 },
@@ -168,7 +252,9 @@ const styles = StyleSheet.create({
   },
   textoStockBajo: { fontFamily: FUENTES.negrita, fontSize: 12, color: COLORES.negro },
   stock: { fontFamily: FUENTES.regular, fontSize: 13, color: COLORES.textoSuave },
+ 
 
+  
   // Acciones
   filaAcciones: {
     flexDirection: 'row',
