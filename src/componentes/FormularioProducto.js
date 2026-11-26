@@ -3,8 +3,10 @@
 // (Modal), igual que la ficha de detalle.
 //   - Si llega "producto" → modo EDITAR: los campos vienen cargados.
 //   - Si "producto" es null → modo AGREGAR: los campos vienen vacíos.
-// PASO 2 (tarea 2 del Sp 4): SOLO MAQUETACIÓN. "Guardar" todavía no guarda.
-// PASO 3: validaciones al salir de cada campo.
+// PASO 2 (tarea 2 del Sp 4): maquetación.
+// PASO 3 (tarea 3 del Sp 4): validación al salir de cada campo (borde rojo / verde
+//         y mensaje debajo, como el Registro). Reglas en src/validaciones.js.
+//         El botón queda deshabilitado hasta que todo sea válido.
 // PASO 4: guardar en Firestore con crearProducto.
 import React, { useEffect, useState } from 'react';
 import {
@@ -22,6 +24,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { COLORES, FUENTES, MEDIDAS, estilosComunes } from '../estilos';
+import { validarProducto } from '../validaciones';
 
 // Valores de un formulario vacío (modo AGREGAR).
 // Todo es texto porque TextInput siempre trabaja con texto;
@@ -91,17 +94,48 @@ function Campo({ etiqueta, icono, obligatorio = true, estado = 'neutral', mensaj
 export default function FormularioProducto({ visible, producto, alCerrar }) {
   const insets = useSafeAreaInsets();
   const [valores, setValores] = useState(VACIO);
+  // Campos que el usuario ya visitó y dejó (onBlur). El error se muestra
+  // recién después de salir del campo, para no marcar rojo mientras escribe.
+  const [tocados, setTocados] = useState({});
 
   const editando = producto != null; // true = modo EDITAR
 
   // Cada vez que se abre, carga los datos del producto o deja todo vacío.
   // Sin esto, al abrir "Agregar" después de "Editar" quedarían los datos viejos.
   useEffect(() => {
-    if (visible) setValores(editando ? aValores(producto) : VACIO);
+    if (visible) {
+      setValores(editando ? aValores(producto) : VACIO);
+      setTocados({}); // al abrir, ningún campo está marcado
+    }
   }, [visible, producto]);
 
   // Cambia un solo campo y deja el resto igual: cambiar('precio', '4800')
   const cambiar = (campo, texto) => setValores((v) => ({ ...v, [campo]: texto }));
+
+  // Marca un campo como visitado: tocar('precio')
+  const tocar = (campo) => setTocados((t) => ({ ...t, [campo]: true }));
+
+  // Se recalcula en cada render: si ya saliste del campo, el error
+  // se actualiza mientras corregís (pasa de rojo a verde sin volver a salir).
+  const errores = validarProducto(valores);
+  const formularioValido = Object.values(errores).every((e) => e === '');
+
+  // Qué color lleva cada campo:
+  //   sin tocar → neutral · con error → rojo · bien → verde
+  //   (el código de barras vacío queda neutral: es opcional)
+  const estadoDe = (campo) => {
+    if (!tocados[campo]) return 'neutral';
+    if (errores[campo]) return 'error';
+    if (valores[campo].trim() === '') return 'neutral';
+    return 'ok';
+  };
+
+  // Props que repiten todos los campos: estado, mensaje y onBlur
+  const validacion = (campo) => ({
+    estado: estadoDe(campo),
+    mensajeError: errores[campo],
+    onBlur: () => tocar(campo),
+  });
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={alCerrar}>
@@ -136,6 +170,7 @@ export default function FormularioProducto({ visible, producto, alCerrar }) {
               placeholder="Ej.: Yerba mate 1 kg"
               value={valores.nombre}
               onChangeText={(t) => cambiar('nombre', t)}
+              {...validacion('nombre')}
             />
             <Campo
               etiqueta="Categoría"
@@ -143,6 +178,7 @@ export default function FormularioProducto({ visible, producto, alCerrar }) {
               placeholder="Ej.: Almacén"
               value={valores.categoria}
               onChangeText={(t) => cambiar('categoria', t)}
+              {...validacion('categoria')}
             />
 
             {/* Precio y stock lado a lado: son cortos */}
@@ -155,6 +191,7 @@ export default function FormularioProducto({ visible, producto, alCerrar }) {
                   keyboardType="decimal-pad"
                   value={valores.precio}
                   onChangeText={(t) => cambiar('precio', t)}
+                  {...validacion('precio')}
                 />
               </View>
               <View style={styles.mitad}>
@@ -165,6 +202,7 @@ export default function FormularioProducto({ visible, producto, alCerrar }) {
                   keyboardType="number-pad"
                   value={valores.stock}
                   onChangeText={(t) => cambiar('stock', t)}
+                  {...validacion('stock')}
                 />
               </View>
             </View>
@@ -177,18 +215,28 @@ export default function FormularioProducto({ visible, producto, alCerrar }) {
               keyboardType="number-pad"
               value={valores.codigoBarras}
               onChangeText={(t) => cambiar('codigoBarras', t)}
+              {...validacion('codigoBarras')}
             />
 
-            {/* Guardar: sin función hasta el paso 4 */}
+            {/* Guardar: deshabilitado hasta que todo sea válido. Guarda en el paso 4 */}
             <TouchableOpacity
-              style={[estilosComunes.boton, styles.boton]}
+              style={[
+                estilosComunes.boton,
+                styles.boton,
+                !formularioValido && estilosComunes.botonDeshabilitado,
+              ]}
+              disabled={!formularioValido}
               activeOpacity={0.85}
               accessibilityRole="button"
+              accessibilityState={{ disabled: !formularioValido }}
             >
               <Text style={estilosComunes.textoBoton}>
                 {editando ? 'Guardar cambios' : 'Agregar producto'}
               </Text>
             </TouchableOpacity>
+            {!formularioValido && (
+              <Text style={styles.ayudaBoton}>Completá los campos obligatorios (*)</Text>
+            )}
 
             <TouchableOpacity onPress={alCerrar} style={styles.cancelar} accessibilityRole="button">
               <Text style={estilosComunes.enlace}>Cancelar</Text>
@@ -245,5 +293,12 @@ const styles = StyleSheet.create({
 
   // Botones
   boton: { marginTop: 10 },
+  ayudaBoton: {
+    fontFamily: FUENTES.regular,
+    fontSize: 13,
+    color: COLORES.textoSuave,
+    textAlign: 'center',
+    marginTop: 8,
+  },
   cancelar: { alignSelf: 'center', marginTop: 14, minHeight: 24, justifyContent: 'center' },
 });

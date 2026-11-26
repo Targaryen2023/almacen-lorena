@@ -64,3 +64,75 @@ export function validarConfirmacion(contrasena, confirmacion) {
   if (confirmacion !== contrasena) return MENSAJES.noCoinciden;
   return '';
 }
+
+// ===========================================================================
+// PRODUCTOS (formulario de agregar / editar)
+// Misma idea: cada función devuelve el texto del error, o '' si está bien.
+// ===========================================================================
+export const MENSAJES_PRODUCTO = {
+  obligatorio: MENSAJES.obligatorio,
+  nombreLargo: 'El nombre puede tener hasta 60 caracteres',
+  categoria: 'La categoría solo puede contener letras y espacios',
+  precio: 'Ingresá un precio mayor a 0 (ej.: 4800 o 4800,50)',
+  stock: 'Ingresá una cantidad entera, de 0 en adelante',
+  codigoBarras: 'Solo números, de 8 a 14 dígitos',
+};
+
+// Precio: entero o con hasta 2 decimales, con punto o con coma → 4800 · 4800,5 · 4800.50
+const REGEX_PRECIO = /^\d+([.,]\d{1,2})?$/;
+// Stock: solo dígitos (entero, sin signo)
+const REGEX_STOCK = /^\d+$/;
+// Código de barras: EAN-8 a GTIN-14 → entre 8 y 14 dígitos
+const REGEX_CODIGO = /^\d{8,14}$/;
+
+// "4800,50" → 4800.5  (en Argentina se escribe con coma; JavaScript usa punto)
+export const textoANumero = (texto) => Number(texto.trim().replace(',', '.'));
+
+export function validarNombreProducto(valor) {
+  const limpio = valor.trim();
+  if (!limpio) return MENSAJES_PRODUCTO.obligatorio;
+  if (limpio.length > 60) return MENSAJES_PRODUCTO.nombreLargo;
+  return '';
+}
+
+// Reusa la regla de nombre y apellido: letras (con tildes), ñ y espacios
+export function validarCategoria(valor) {
+  const limpio = valor.trim();
+  if (!limpio) return MENSAJES_PRODUCTO.obligatorio;
+  if (!REGEX_NOMBRE.test(limpio)) return MENSAJES_PRODUCTO.categoria;
+  return '';
+}
+
+export function validarPrecio(valor) {
+  const limpio = valor.trim();
+  if (!limpio) return MENSAJES_PRODUCTO.obligatorio;
+  if (!REGEX_PRECIO.test(limpio) || textoANumero(limpio) <= 0) return MENSAJES_PRODUCTO.precio;
+  return '';
+}
+
+export function validarStock(valor) {
+  const limpio = valor.trim();
+  if (!limpio) return MENSAJES_PRODUCTO.obligatorio;
+  if (!REGEX_STOCK.test(limpio)) return MENSAJES_PRODUCTO.stock;
+  return '';
+}
+
+// Opcional: vacío está bien; si se escribe algo, tiene que ser un código válido
+export function validarCodigoBarras(valor) {
+  const limpio = valor.trim();
+  if (!limpio) return '';
+  if (!REGEX_CODIGO.test(limpio)) return MENSAJES_PRODUCTO.codigoBarras;
+  return '';
+}
+
+// Valida los 5 campos juntos y devuelve un objeto con el error de cada uno:
+//   { nombre: '', categoria: 'Este campo es obligatorio', ... }
+export function validarProducto(valores) {
+  return {
+    nombre: validarNombreProducto(valores.nombre),
+    categoria: validarCategoria(valores.categoria),
+    precio: validarPrecio(valores.precio),
+    stock: validarStock(valores.stock),
+    codigoBarras: validarCodigoBarras(valores.codigoBarras),
+  };
+}
