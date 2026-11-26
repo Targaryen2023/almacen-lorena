@@ -3,7 +3,7 @@
 // TAREA 3: SOLO INTERFAZ. Los productos son de ejemplo (fijos en el código) y
 // los botones Ver / Editar / Eliminar / + y el buscador todavía no hacen nada.
 // "Cerrar sesión" pasó a la pestaña Perfil (tarea 4).
-import React {useState, useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 
 
 import { 
@@ -21,7 +21,8 @@ import { Feather } from '@expo/vector-icons';
 import { COLORES, FUENTES, MEDIDAS, estilosComunes } from '../src/estilos';
 import { escucharProductos } from '../src/services/productos';
 import { buscarImagenProducto } from '../src/services/imagenProducto';
-
+import FormularioProducto from '../src/componentes/FormularioProducto';
+import DetalleProducto from '../src/componentes/DetalleProducto';
 
 
 // Desde cuántas unidades se marca "Stock bajo"
@@ -111,9 +112,24 @@ function TarjetaProducto({ producto }) {
 
       {/* Parte de abajo: acciones */}
       <View style={styles.filaAcciones}>
-        <Accion icono="eye" texto="Ver" color={COLORES.violeta} />
-        <Accion icono="edit-2" texto="Editar" color={COLORES.verde} />
-        <Accion icono="trash-2" texto="Eliminar" color={COLORES.rojo} />
+        <Accion 
+          icono="eye" 
+          texto="Ver" 
+          color={COLORES.violeta} 
+          alTocar={() => alVer({...producto,foto: producto.imagen_url || fotoExterna})}
+        />
+        <Accion 
+          icono="edit-2" 
+          texto="Editar" 
+          color={COLORES.verde}
+          alTocar={() => alEditar(producto)} 
+        />
+        <Accion 
+          icono="trash-2" 
+          texto="Eliminar" 
+          color={COLORES.rojo}
+          alTocar={()=> alEliminar(producto)} 
+        />
       </View>
     </View>
   );
@@ -128,6 +144,45 @@ export default function Home() {
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  const [formularioVisible, setFormularioVisible] = useState(false);
+  const [productoEditando, setProductoEditando] = useState(null); // null = formulario para agregar
+  const [productoViendo, setProductoViendo] = useState(null);
+
+
+  const abrirNuevo = () => {
+    setProductoEditando(null);
+    setFormularioVisible(true);
+  };
+ 
+  const abrirEditar = (producto) => {
+    setProductoViendo(null);
+    setProductoEditando(producto);
+    setFormularioVisible(true);
+  };
+
+
+// Pide confirmación antes de borrar (no se puede deshacer)
+  const pedirEliminar = (producto) => {
+    Alert.alert(
+      'Eliminar producto',
+      `¿Seguro que querés eliminar "${producto.nombre}"? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await eliminarProducto(producto.id); // la lista se actualiza sola
+            } catch (e) {
+              console.warn('Error al eliminar producto:', e.code);
+              Alert.alert('No se pudo eliminar', 'Revisá tu conexión e intentá de nuevo.');
+            }
+          },
+        },
+      ],
+    );
+  };
 
 
 // Se conecta a Firestore al abrir la pantalla y se desconecta al salir.
@@ -201,14 +256,30 @@ export default function Home() {
       {/* Botón flotante "+" para agregar (sin función por ahora) */}
       <TouchableOpacity
         style={styles.botonAgregar}
+        onPress={abrirNuevo}
         accessibilityRole="button"
         accessibilityLabel="Agregar producto"
       >
         <Feather name="plus" size={30} color={COLORES.blanco} />
       </TouchableOpacity>
+
+      <FormularioProducto
+        visible={formularioVisible}
+        producto={productoEditando}
+        alCerrar={() => setFormularioVisible(false)}
+      />
+ 
+      <DetalleProducto
+        producto={productoViendo}
+        alCerrar={() => setProductoViendo(null)}
+        alEditar={abrirEditar}
+      />
+
     </View>
   );
 }
+
+
 
 // ---------------------------------------------------------------------------
 // Estilos (medidas del Figma 04)
