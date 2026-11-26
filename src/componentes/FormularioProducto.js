@@ -7,7 +7,10 @@
 // PASO 3 (tarea 3 del Sp 4): validación al salir de cada campo (borde rojo / verde
 //         y mensaje debajo, como el Registro). Reglas en src/validaciones.js.
 //         El botón queda deshabilitado hasta que todo sea válido.
-// PASO 4: guardar en Firestore con crearProducto.
+// PASO 4 (tarea 4 del Sp 4): "Agregar producto" guarda en Firestore con crearProducto.
+//         Spinner mientras guarda; si falla, mensaje en pantalla (Alert no se ve en web).
+//         Al guardar se cierra y la lista del Home se actualiza sola (onSnapshot).
+// Modo EDITAR: guardar con actualizarProducto es la tarea 5 del Sp 4 (Maxi).
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -19,12 +22,14 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
   StyleSheet,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { COLORES, FUENTES, MEDIDAS, estilosComunes } from '../estilos';
-import { validarProducto } from '../validaciones';
+import { validarProducto, textoANumero } from '../validaciones';
+import { crearProducto } from '../services/productos';
 
 // Valores de un formulario vacío (modo AGREGAR).
 // Todo es texto porque TextInput siempre trabaja con texto;
@@ -97,6 +102,8 @@ export default function FormularioProducto({ visible, producto, alCerrar }) {
   // Campos que el usuario ya visitó y dejó (onBlur). El error se muestra
   // recién después de salir del campo, para no marcar rojo mientras escribe.
   const [tocados, setTocados] = useState({});
+  const [guardando, setGuardando] = useState(false); // true mientras espera a Firestore
+  const [errorGuardar, setErrorGuardar] = useState(''); // mensaje si Firestore falla
 
   const editando = producto != null; // true = modo EDITAR
 
@@ -106,6 +113,7 @@ export default function FormularioProducto({ visible, producto, alCerrar }) {
     if (visible) {
       setValores(editando ? aValores(producto) : VACIO);
       setTocados({}); // al abrir, ningún campo está marcado
+      setErrorGuardar('');
     }
   }, [visible, producto]);
 
@@ -128,6 +136,41 @@ export default function FormularioProducto({ visible, producto, alCerrar }) {
     if (errores[campo]) return 'error';
     if (valores[campo].trim() === '') return 'neutral';
     return 'ok';
+  };
+
+  // Guarda el producto nuevo en Firestore.
+  // Los valores del formulario son texto: acá se limpian y se pasan a número
+  // ("4800,50" → 4800.5), porque el servicio usa Number() y con coma daría NaN.
+  const guardar = async () => {
+    if (!formularioValido || guardando) return;
+
+    const datos = {
+      nombre: valores.nombre.trim(),
+      categoria: valores.categoria.trim(),
+      precio: textoANumero(valores.precio),
+      stock: Number(valores.stock),
+      codigoBarras: valores.codigoBarras.trim(),
+      imagen_url: '', // la foto la busca la tarjeta por código de barras (OpenFoodFacts)
+    };
+
+    // TAREA 5 (Maxi): en modo EDITAR va actualizarProducto(producto.id, ...)
+    if (editando) return;
+
+    setGuardando(true);
+    setErrorGuardar('');
+    try {
+      await crearProducto(datos);
+      alCerrar(); // la lista se actualiza sola: el Home escucha Firestore
+    } catch (e) {
+      console.warn('Error al crear producto:', e.code);
+      setErrorGuardar(
+        e.code === 'permission-denied'
+          ? 'No tenés permiso para guardar productos.'
+          : 'No se pudo guardar. Revisá tu conexión e intentá de nuevo.',
+      );
+    } finally {
+      setGuardando(false); // se ejecuta siempre, haya salido bien o mal
+    }
   };
 
   // Props que repiten todos los campos: estado, mensaje y onBlur
@@ -218,21 +261,34 @@ export default function FormularioProducto({ visible, producto, alCerrar }) {
               {...validacion('codigoBarras')}
             />
 
-            {/* Guardar: deshabilitado hasta que todo sea válido. Guarda en el paso 4 */}
+            {/* Cartel rojo si Firestore no pudo guardar */}
+            {errorGuardar !== '' && (
+              <View style={styles.cartelError}>
+                <Feather name="alert-circle" size={18} color={COLORES.rojo} />
+                <Text style={styles.textoCartel}>{errorGuardar}</Text>
+              </View>
+            )}
+
+            {/* Guardar: deshabilitado hasta que todo sea válido y mientras guarda */}
             <TouchableOpacity
               style={[
                 estilosComunes.boton,
                 styles.boton,
-                !formularioValido && estilosComunes.botonDeshabilitado,
+                (!formularioValido || guardando) && estilosComunes.botonDeshabilitado,
               ]}
-              disabled={!formularioValido}
+              onPress={guardar}
+              disabled={!formularioValido || guardando}
               activeOpacity={0.85}
               accessibilityRole="button"
-              accessibilityState={{ disabled: !formularioValido }}
+              accessibilityState={{ disabled: !formularioValido || guardando }}
             >
-              <Text style={estilosComunes.textoBoton}>
-                {editando ? 'Guardar cambios' : 'Agregar producto'}
-              </Text>
+              {guardando ? (
+                <ActivityIndicator color={COLORES.blanco} />
+              ) : (
+                <Text style={estilosComunes.textoBoton}>
+                  {editando ? 'Guardar cambios' : 'Agregar producto'}
+                </Text>
+              )}
             </TouchableOpacity>
             {!formularioValido && (
               <Text style={styles.ayudaBoton}>Completá los campos obligatorios (*)</Text>
@@ -293,6 +349,23 @@ const styles = StyleSheet.create({
 
   // Botones
   boton: { marginTop: 10 },
+  cartelError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: MEDIDAS.radioCampo,
+    borderWidth: 1,
+    borderColor: COLORES.rojo,
+    backgroundColor: COLORES.rojoSuave,
+    marginTop: 4,
+  },
+  textoCartel: {
+    fontFamily: FUENTES.media,
+    fontSize: 14,
+    color: COLORES.rojo,
+    marginLeft: 8,
+    flexShrink: 1,
+  },
   ayudaBoton: {
     fontFamily: FUENTES.regular,
     fontSize: 13,
