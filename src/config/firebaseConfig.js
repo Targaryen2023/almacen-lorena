@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
+import { Platform } from 'react-native';
 
 console.log("API KEY:", process.env.EXPO_PUBLIC_FIREBASE_API_KEY);
 console.log("PROJECT:", process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID);
@@ -34,11 +35,18 @@ let db= null;
 if (isFirebaseConfigured) {
   app = initializeApp(firebaseConfig);
   db=getFirestore(app);
-  try {
-    auth = initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
-  } catch (error) {
-    if (error.code !== 'auth/already-initialized') throw error;
+  if (Platform.OS === 'web') {
+    // En el navegador no existe getReactNativePersistence:
+    // getAuth ya guarda la sesión en el almacenamiento del navegador.
     auth = getAuth(app);
+  } else {
+    // En el celular la sesión se guarda con AsyncStorage
+    try {
+      auth = initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+    } catch (error) {
+      if (error.code !== 'auth/already-initialized') throw error;
+      auth = getAuth(app);
+    }
   }
 }
 
