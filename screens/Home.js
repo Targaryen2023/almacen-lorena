@@ -23,6 +23,7 @@ import { escucharProductos } from '../src/services/productos';
 import { buscarImagenProducto } from '../src/services/imagenProducto';
 import FormularioProducto from '../src/componentes/FormularioProducto';
 import DetalleProducto from '../src/componentes/DetalleProducto';
+import { filtrarProductos } from '../src/busqueda';
 
 
 // Desde cuántas unidades se marca "Stock bajo"
@@ -141,7 +142,8 @@ function TarjetaProducto({ producto }) {
 export default function Home() {
   const insets = useSafeAreaInsets();
 
-  const [productos, setProductos] = useState([]);
+  const [todos, setTodos] = useState([]); // lista completa que llega de Firestore
+  const [busqueda, setBusqueda] = useState(''); // texto del buscador
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [formularioVisible, setFormularioVisible] = useState(false);
@@ -189,7 +191,7 @@ export default function Home() {
   useEffect(() => {
     const dejarDeEscuchar = escucharProductos(
       (lista) => {
-        setProductos(lista);
+        setTodos(lista);
         setError('');
         setCargando(false);
       },
@@ -203,7 +205,10 @@ export default function Home() {
   }, []);
  
   // Resumen del encabezado, calculado a partir de los datos
-  const cantidadStockBajo = productos.filter((p) => p.stock <= STOCK_BAJO).length;
+  const cantidadStockBajo = todos.filter((p) => p.stock <= STOCK_BAJO).length;
+
+  // Lo que muestra la lista: todo, o solo lo que coincide con el buscador
+  const productos = filtrarProductos(todos, busqueda);
  
 
   
@@ -213,7 +218,7 @@ export default function Home() {
       <View style={[estilosComunes.franja, { paddingTop: insets.top + 24 }]}>
         <Text style={estilosComunes.titulo}>Productos</Text>
         <Text style={estilosComunes.subtitulo}>
-          {productos.length} productos · {cantidadStockBajo} con stock bajo
+          {todos.length} productos · {cantidadStockBajo} con stock bajo
         </Text>
     </View>
 
@@ -226,7 +231,7 @@ export default function Home() {
         contentContainerStyle={styles.lista}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          // Buscador (todavía no filtra)
+          // Buscador: filtra por nombre, categoría o código de barras
           <View style={[estilosComunes.caja, styles.buscador]}>
             <Feather
               name="search"
@@ -238,7 +243,22 @@ export default function Home() {
               style={estilosComunes.input}
               placeholder="Buscar producto..."
               placeholderTextColor={COLORES.textoSuave}
+              value={busqueda}
+              onChangeText={setBusqueda}
+              autoCorrect={false}
+              returnKeyType="search"
             />
+            {/* X para borrar la búsqueda (solo si hay algo escrito) */}
+            {busqueda !== '' && (
+              <TouchableOpacity
+                onPress={() => setBusqueda('')}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Borrar búsqueda"
+              >
+                <Feather name="x" size={20} color={COLORES.textoSuave} />
+              </TouchableOpacity>
+            )}
           </View>
         }
 
@@ -247,7 +267,10 @@ export default function Home() {
             <ActivityIndicator color={COLORES.violeta} style={styles.estado} />
           ) : (
             <Text style={[estilosComunes.subtitulo, styles.estado, error && styles.textoError]}>
-              {error || 'Todavía no hay productos cargados.'}
+              {error ||
+                (busqueda
+                  ? `No hay productos que coincidan con "${busqueda.trim()}".`
+                  : 'Todavía no hay productos cargados.')}
             </Text>
           )
         }
