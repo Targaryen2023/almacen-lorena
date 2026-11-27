@@ -10,7 +10,7 @@
 // PASO 4 (tarea 4 del Sp 4): "Agregar producto" guarda en Firestore con crearProducto.
 //         Spinner mientras guarda; si falla, mensaje en pantalla (Alert no se ve en web).
 //         Al guardar se cierra y la lista del Home se actualiza sola (onSnapshot).
-// Modo EDITAR: guardar con actualizarProducto es la tarea 5 del Sp 4 (Maxi).
+// Modo EDITAR: guarda con actualizarProducto y conserva la imagen que ya tenía.
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -29,7 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { COLORES, FUENTES, MEDIDAS, estilosComunes } from '../estilos';
 import { validarProducto, textoANumero } from '../validaciones';
-import { crearProducto } from '../services/productos';
+import { crearProducto, actualizarProducto } from '../services/productos';
 
 // Valores de un formulario vacío (modo AGREGAR).
 // Todo es texto porque TextInput siempre trabaja con texto;
@@ -153,16 +153,18 @@ export default function FormularioProducto({ visible, producto, alCerrar }) {
       imagen_url: '', // la foto la busca la tarjeta por código de barras (OpenFoodFacts)
     };
 
-    // TAREA 5 (Maxi): en modo EDITAR va actualizarProducto(producto.id, ...)
-    if (editando) return;
-
     setGuardando(true);
     setErrorGuardar('');
     try {
-      await crearProducto(datos);
+      if (editando) {
+        // conserva la imagen que ya tenía el producto (el formulario no la edita)
+        await actualizarProducto(producto.id, { ...datos, imagen_url: producto.imagen_url });
+      } else {
+        await crearProducto(datos);
+      }
       alCerrar(); // la lista se actualiza sola: el Home escucha Firestore
     } catch (e) {
-      console.warn('Error al crear producto:', e.code);
+      console.warn('Error al guardar producto:', e.code);
       setErrorGuardar(
         e.code === 'permission-denied'
           ? 'No tenés permiso para guardar productos.'

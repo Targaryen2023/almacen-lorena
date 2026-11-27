@@ -1,7 +1,7 @@
 // screens/Home.js
 // Pestaña "Productos" (Figma 04 · Productos). Es lo primero que se ve al iniciar sesión.
-// TAREA 3: SOLO INTERFAZ. Los productos son de ejemplo (fijos en el código) y
-// los botones Ver / Editar / Eliminar / + y el buscador todavía no hacen nada.
+// Los productos vienen de Firestore. Ver abre el detalle, Editar abre el formulario,
+// Inactivar oculta el producto de la lista (borrado lógico) y + agrega uno nuevo.
 // "Cerrar sesión" pasó a la pestaña Perfil (tarea 4).
 import React, {useState, useEffect} from 'react';
 
@@ -19,10 +19,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { COLORES, FUENTES, MEDIDAS, estilosComunes } from '../src/estilos';
-import { escucharProductos } from '../src/services/productos';
+import { escucharProductos, inactivarProducto } from '../src/services/productos';
 import { buscarImagenProducto } from '../src/services/imagenProducto';
 import FormularioProducto from '../src/componentes/FormularioProducto';
 import DetalleProducto from '../src/componentes/DetalleProducto';
+import ConfirmarInactivar from '../src/componentes/ConfirmarInactivar';
 import { filtrarProductos } from '../src/busqueda';
 
 
@@ -38,11 +39,11 @@ const miniatura = (url) =>
     : url;
 
 // ---------------------------------------------------------------------------
-// Botón chico de la tarjeta (ícono + texto). Sin función por ahora.
+// Botón chico de la tarjeta (ícono + texto). alTocar = lo que hace al tocarlo.
 // ---------------------------------------------------------------------------
-function Accion({ icono, texto, color }) {
+function Accion({ icono, texto, color, alTocar }) {
   return (
-    <TouchableOpacity style={styles.accion} hitSlop={8} accessibilityRole="button">
+    <TouchableOpacity style={styles.accion} hitSlop={8} onPress={alTocar} accessibilityRole="button">
       <Feather name={icono} size={16} color={color} />
       <Text style={[styles.textoAccion, { color }]}>{texto}</Text>
     </TouchableOpacity>
@@ -52,7 +53,7 @@ function Accion({ icono, texto, color }) {
 // ---------------------------------------------------------------------------
 // Tarjeta de un producto
 // ---------------------------------------------------------------------------
-function TarjetaProducto({ producto }) {
+function TarjetaProducto({ producto, alVer, alEditar, alInactivar }) {
   const stockBajo = producto.stock <= STOCK_BAJO;
 
 
@@ -85,7 +86,7 @@ function TarjetaProducto({ producto }) {
                 source={{ uri: imagenUrl }} 
                 style={styles.imagen}
                 resizeMode="contain"
-                acceessibilityLabel={`Foto del producto ${producto.nombre}`}
+                accessibilityLabel={`Foto del producto ${producto.nombre}`}
               />
             ) : (
               <Feather name="package" size={28} color={COLORES.violeta} />
@@ -126,10 +127,10 @@ function TarjetaProducto({ producto }) {
           alTocar={() => alEditar(producto)} 
         />
         <Accion 
-          icono="trash-2" 
-          texto="Eliminar" 
+          icono="archive" 
+          texto="Inactivar" 
           color={COLORES.rojo}
-          alTocar={()=> alEliminar(producto)} 
+          alTocar={()=> alInactivar(producto)} 
         />
       </View>
     </View>
@@ -149,6 +150,7 @@ export default function Home() {
   const [formularioVisible, setFormularioVisible] = useState(false);
   const [productoEditando, setProductoEditando] = useState(null); // null = formulario para agregar
   const [productoViendo, setProductoViendo] = useState(null);
+  const [productoInactivando, setProductoInactivando] = useState(null); // producto que se está por inactivar
 
 
   const abrirNuevo = () => {
@@ -163,28 +165,10 @@ export default function Home() {
   };
 
 
-// Pide confirmación antes de borrar (no se puede deshacer)
-  const pedirEliminar = (producto) => {
-    Alert.alert(
-      'Eliminar producto',
-      `¿Seguro que querés eliminar "${producto.nombre}"? Esta acción no se puede deshacer.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await eliminarProducto(producto.id); // la lista se actualiza sola
-            } catch (e) {
-              console.warn('Error al eliminar producto:', e.code);
-              Alert.alert('No se pudo eliminar', 'Revisá tu conexión e intentá de nuevo.');
-            }
-          },
-        },
-      ],
-    );
-  };
+  const abrirVer = (producto) => setProductoViendo(producto);
+
+// Abre la ventana de confirmación (ConfirmarInactivar) antes de inactivar
+  const pedirInactivar = (producto) => setProductoInactivando(producto);
 
 
 // Se conecta a Firestore al abrir la pantalla y se desconecta al salir.
@@ -227,7 +211,9 @@ export default function Home() {
       <FlatList
         data={productos}  
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <TarjetaProducto producto={item} />}
+        renderItem={({ item }) => (
+          <TarjetaProducto producto={item} alVer={abrirVer} alEditar={abrirEditar} alInactivar={pedirInactivar} />
+        )}
         contentContainerStyle={styles.lista}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
@@ -292,6 +278,15 @@ export default function Home() {
         alCerrar={() => setFormularioVisible(false)}
       />
  
+      <ConfirmarInactivar
+        producto={productoInactivando}
+        alCancelar={() => setProductoInactivando(null)}
+        alConfirmar={async (producto) => {
+          await inactivarProducto(producto.id); // la lista se actualiza sola
+          setProductoInactivando(null);
+        }}
+      />
+
       <DetalleProducto
         producto={productoViendo}
         alCerrar={() => setProductoViendo(null)}

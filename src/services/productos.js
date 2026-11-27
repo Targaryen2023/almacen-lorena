@@ -1,7 +1,6 @@
 import {
         addDoc,
         collection,
-        deleteDoc,
         doc,
         onSnapshot,
         updateDoc,
@@ -21,6 +20,7 @@ const aProducto = (documento) => {
         stock:Number(d.stock) || 0,
         codigoBarras: d.codigoBarras ? String(d.codigoBarras) : '',
         imagen_url: d.imagen_url || '',
+        activo: d.activo !== false, // los productos viejos no tienen el campo: cuentan como activos
     };
 };
 
@@ -39,7 +39,7 @@ export function escucharProductos(alRecibir, alFallar) {
     return onSnapshot(
      collection(db, 'productos'),
      (snapshot) => {
-        const lista = snapshot.docs.map(aProducto);
+        const lista = snapshot.docs.map(aProducto).filter((p) => p.activo); // los inactivos no se muestran
         lista.sort((a, b) => a.nombre.localeCompare(b.nombre));
         alRecibir(lista);
     },
@@ -49,7 +49,11 @@ export function escucharProductos(alRecibir, alFallar) {
 
 // Crea un producto nuevo.
 export async function crearProducto(datos) {
-  const referencia = await addDoc(collection(db, 'productos'), aDocumento(datos));
+  const referencia = await addDoc(collection(db, 'productos'), {
+    ...aDocumento(datos),
+    origen: datos.origen || 'propio', // 'muestra' = producto de ejemplo
+    activo: true,
+  });
   return referencia.id;
 }
  
@@ -58,7 +62,8 @@ export async function actualizarProducto(id, datos) {
   await updateDoc(doc(db, 'productos', id), aDocumento(datos));
 }
  
-// Borra un producto.
-export async function eliminarProducto(id) {
-  await deleteDoc(doc(db, 'productos', id));
+// Borrado lógico: el producto no se borra de Firestore, se marca como inactivo
+// y deja de mostrarse en la lista.
+export async function inactivarProducto(id) {
+  await updateDoc(doc(db, 'productos', id), { activo: false });
 }
